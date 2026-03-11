@@ -119,13 +119,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 1. Tenta carregar dados fresquinhos do Supabase
   if (window.supabaseClient) {
     try {
+      console.log('🔄 Tentando carregar usuários do Supabase...');
       const [u, p, d] = await Promise.all([
         window.supabaseClient.from('users').select('*'),
         window.supabaseClient.from('projects').select('*'),
         window.supabaseClient.from('daily_entries').select('*')
       ]);
 
-      if (u.data && u.data.length > 0) { users = u.data; originalSaveData(STORAGE_KEYS.users, users); }
+      if (u.error) console.error('❌ Erro ao buscar usuários:', u.error);
+      if (u.data) {
+        console.log(`✅ ${u.data.length} usuários carregados do Supabase.`);
+        if (u.data.length > 0) {
+          users = u.data;
+          originalSaveData(STORAGE_KEYS.users, users);
+        }
+      }
+
       if (p.data && p.data.length > 0) { projects = p.data; originalSaveData(STORAGE_KEYS.projects, projects); }
       if (d.data && d.data.length > 0) { dailyEntries = d.data; originalSaveData(STORAGE_KEYS.dailyEntries, dailyEntries); }
       
