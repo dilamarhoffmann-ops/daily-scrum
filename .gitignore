@@ -1,0 +1,15 @@
+node_modules/
+.env
+dist/
+.DS_Store
+*.log
+# Debug scripts
+debug_squad.js
+github_meta.js
+list_github_projs*.js
+sync_github_daily.js
+validar_sincronismo.js
+verificar_colunas.js
+verificar_projetos.js
+verificar_token.js
+Documentos/*.pdf

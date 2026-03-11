@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description"
+    content="Daily Scrum – Gestão de projetos com controle de acesso e visualização de alocação de recursos." />
+  <title>Daily Scrum – Gestão de Projetos</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="help.css" />
+</head>
+
+<body>
+
+  <!-- ═══════════════════ LOGIN SCREEN ═══════════════════ -->
+  <div id="loginScreen" class="login-screen">
+    <div class="login-bg-shapes">
+      <div class="login-shape s1"></div>
+      <div class="login-shape s2"></div>
+      <div class="login-shape s3"></div>
+    </div>
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="login-logo-icon">📋</div>
+        <div>
+          <h1>Daily Scrum</h1>
+          <p>Project Management</p>
+        </div>
+      </div>
+
+      <div class="login-divider">Acesse sua conta</div>
+
+      <div class="form-group">
+        <label for="loginSelect">Usuário</label>
+        <select id="loginSelect" class="form-control login-select">
+          <option value="">Selecione seu usuário...</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="loginPassword">Senha</label>
+        <div class="login-password-wrapper">
+          <input type="password" id="loginPassword" class="form-control" placeholder="Digite sua senha" />
+          <button class="login-eye-btn" type="button" onclick="toggleLoginPassword(this)">
+            👁️
+          </button>
+        </div>
+
+      </div>
+
+      <button id="loginBtn" class="btn btn-primary login-btn" onclick="doLogin()">
+        <span>Entrar</span>
+        <span>→</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ APP SHELL ═══════════════════ -->
+  <div id="appShell" class="app-shell hidden">
+
+    <!-- ── Sidebar ── -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <h1>Daily Scrum</h1>
+        <p>Project Management</p>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-item active" data-page="projects" onclick="switchPage('projects')">
+          <span class="nav-icon">📋</span>
+          <span>Projetos</span>
+        </div>
+        <div class="nav-item" data-page="flow" onclick="switchPage('flow')">
+          <span class="nav-icon">📊</span>
+          <span>Fluxo</span>
+        </div>
+        <div class="nav-item" data-page="daily" onclick="switchPage('daily')">
+          <span class="nav-icon">📝</span>
+          <span>Daily</span>
+        </div>
+        <div class="nav-item" data-page="config" onclick="switchPage('config')">
+          <span class="nav-icon">⚙️</span>
+          <span>Configuração</span>
+        </div>
+        <div class="nav-item help-nav-item" onclick="openHelpModal()">
+          <span class="nav-icon">❓</span>
+          <span>Ajuda</span>
+        </div>
+      </nav>
+      <div class="sidebar-user" id="sidebarUser">
+        <div class="sidebar-user-avatar" id="userAvatar">AD</div>
+        <div class="sidebar-user-info" style="flex:1; min-width:0;">
+          <div class="name" id="userName">Admin</div>
+          <div class="role" id="sidebarUserRole">Admin</div>
+        </div>
+        <button class="sidebar-logout-btn" onclick="doLogout()" title="Sair">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ── Main ── -->
+    <main class="main-content">
+
+      <!-- ═══ CONFIG PAGE ═══ -->
+      <section id="pageConfig" class="page-section active">
+        <div class="page-header">
+          <h2>⚙️ Configuração</h2>
+          <p>Gerencie os usuários do sistema e seus níveis de acesso.</p>
+        </div>
+
+        <div class="stats-grid" id="configStats"></div>
+
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <div class="search-box">
+              <input type="text" class="form-control" id="searchUsers" placeholder="Buscar usuários..."
+                oninput="renderUsersTable()" />
+            </div>
+          </div>
+          <button class="btn btn-primary" id="btnAddUser" onclick="openUserModal()">
+            ＋ Novo Usuário
+          </button>
+        </div>
+
+        <div class="glass-card">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nome Completo</th>
+                  <th>E-mail</th>
+                  <th>Função</th>
+                  <th>Nível de Acesso</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody"></tbody>
+            </table>
+            <div id="usersEmpty" class="empty-state hidden">
+              <div class="icon">👥</div>
+              <h3>Nenhum usuário cadastrado</h3>
+              <p>Adicione o primeiro usuário para começar.</p>
+            </div>
+          </div>
+
+          <!-- ── Backup & Restauração ── -->
+          <div class="glass-card" id="backupPanel" style="margin-top:24px;">
+            <div style="padding:20px 24px;">
+              <div class="flex items-center gap-12" style="margin-bottom:4px;">
+                <span style="font-size:1.25rem;">💾</span>
+                <h3 style="margin:0;font-size:1rem;font-weight:700;">Backup & Restauração</h3>
+              </div>
+              <p class="text-sm text-muted" style="margin-bottom:16px;">
+                Exporte todos os dados (usuários, projetos e registros Daily) para um arquivo JSON. Guarde este arquivo
+                com segurança para restaurar em caso de perda.
+              </p>
+              <div class="flex gap-12" style="flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="exportBackup()">
+                  ⬇️ Exportar Backup (.json)
+                </button>
+                <label class="btn btn-secondary" style="cursor:pointer;margin:0;">
+                  ⬆️ Importar Backup (.json)
+                  <input type="file" id="importBackupInput" accept=".json" style="display:none;"
+                    onchange="importBackup(event)" />
+                </label>
+              </div>
+            </div>
+          </div>
+      </section>
+
+
+      <!-- ═══ PROJECTS PAGE ═══ -->
+      <section id="pageProjects" class="page-section">
+        <div class="page-header">
+          <h2>📋 Projetos</h2>
+          <p>Gerencie projetos, pendências e impedimentos da equipe.</p>
+        </div>
+
+        <div class="stats-grid" id="projectStats"></div>
+
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <div class="search-box">
+              <input type="text" class="form-control" id="searchProjects" placeholder="Buscar projetos..."
+                oninput="renderProjectsKanban()" />
+            </div>
+          </div>
+          <button class="btn btn-primary" id="btnAddProject" onclick="openProjectModal()">
+            ＋ Novo Projeto
+          </button>
+        </div>
+
+        <div class="kanban-columns" id="kanbanColumns"></div>
+      </section>
+
+      <!-- ═══ DAILY PAGE ═══ -->
+      <section id="pageDaily" class="page-section">
+        <div class="page-header">
+          <h2>📝 Daily</h2>
+          <p>Registre o que fez ontem, o que fará hoje e vincule cada atividade a um projeto.</p>
+        </div>
+
+        <div class="stats-grid" id="dailyStats"></div>
+
+        <div class="toolbar">
+          <div class="toolbar-left" style="display: flex; gap: 12px; align-items: center;">
+            <div class="form-group" style="margin-bottom:0;">
+              <input type="date" id="dailyDateFilter" class="form-control" onchange="renderDailyPage()" />
+            </div>
+            <div class="form-group" style="margin-bottom:0; min-width: 200px;">
+              <select id="dailyUserFilter" class="form-control" onchange="renderDailyPage()">
+                <option value="">Todos os colaboradores</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex gap-8">
+            <button class="btn btn-secondary" id="btnDailyReport" onclick="openDailyReportModal()">
+              📊 Relatório por Período
+            </button>
+            <button class="btn btn-primary" id="btnAddDaily" onclick="openDailyModal()">
+              ＋ Novo Registro
+            </button>
+          </div>
+        </div>
+
+        <div id="dailyEntries"></div>
+      </section>
+
+      <!-- ═══ FLOW PAGE ═══ -->
+      <section id="pageFlow" class="page-section">
+        <div class="page-header">
+          <h2>📊 Fluxo de Recursos</h2>
+          <p>Visualize a alocação de usuários nos projetos e identifique impedimentos.</p>
+        </div>
+
+        <div class="filter-bar"
+          style="display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;">
+          <div style="flex: 1;">
+            <label style="font-size:0.8rem;color:var(--text-secondary);">Filtrar por usuário:</label>
+            <select id="filterFlowUser" class="form-control" style="max-width:260px;" onchange="renderFlowDashboard()">
+              <option value="">Todos os usuários</option>
+            </select>
+          </div>
+          <button class="btn btn-secondary" id="btnFlowReport" onclick="generateMarkedReport()">
+            📋 Gerar Relatório de Selecionados
+          </button>
+        </div>
+
+        <div id="flowUserChart" class="mb-24"></div>
+
+        <div class="stats-grid" id="flowStats"></div>
+
+        <div class="flow-grid" id="flowGrid"></div>
+      </section>
+
+      <!-- ═══ AVAZA PROJECTS PAGE ═══ -->
+      <section id="pageAvazaProjects" class="page-section">
+        <div class="page-header">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2>📁 PROJETOS</h2>
+              <p>Visualização tabular de todos os projetos (Estilo Avaza).</p>
+            </div>
+            <div class="flex gap-12">
+              <span class="badge badge-gestor" style="cursor:pointer;">Ativos</span>
+              <span class="badge" style="cursor:pointer;background:rgba(0,0,0,0.05);">Arquivados</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <div class="search-box">
+              <input type="text" class="form-control" placeholder="Buscar projetos..." />
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="openProjectModal()">＋ Adicionar Projeto</button>
+        </div>
+
+        <div class="glass-card">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Título</th>
+                  <th>Categoria</th>
+                  <th>Tags</th>
+                  <th>Tarefas</th>
+                  <th>Início</th>
+                  <th>Término</th>
+                  <th>Visibilidade</th>
+                </tr>
+              </thead>
+              <tbody id="avazaProjectsTableBody">
+                <!-- Static fallback or empty state -->
+                <tr>
+                  <td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);">Nenhum projeto
+                    encontrado</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ AVAZA TASKS PAGE ═══ -->
+      <section id="pageAvazaTasks" class="page-section">
+        <div class="page-header">
+          <h2>✔️ MINHAS TAREFAS</h2>
+          <p>Organização de tarefas por prazo (Estilo Avaza).</p>
+        </div>
+
+        <div class="toolbar">
+          <div class="flex gap-12">
+            <button class="btn btn-secondary btn-sm active">Lista</button>
+            <button class="btn btn-secondary btn-sm">Quadro</button>
+          </div>
+          <button class="btn btn-primary" onclick="openProjectModal()">＋ Adicionar Tarefa</button>
+        </div>
+
+        <div id="avazaTasksList">
+          <!-- Grupos: Com Data e Sem Data -->
+          <div class="avaza-task-group mb-24">
+            <div class="section-divider">Com Data</div>
+            <div id="avazaTasksComData"></div>
+          </div>
+          <div class="avaza-task-group">
+            <div class="section-divider">Sem Data</div>
+            <div id="avazaTasksSemData"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ AVAZA SCHEDULE PAGE ═══ -->
+      <section id="pageAvazaSchedule" class="page-section">
+        <div class="page-header">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2>🗓️ CRONOGRAMA</h2>
+              <p>Escala da equipe e alocação de recursos (Estilo Avaza).</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <div class="search-box">
+              <input type="text" class="form-control" placeholder="Filtrar pessoas..." />
+            </div>
+            <div class="btn-group flex gap-4">
+              <button class="btn btn-secondary btn-sm">Hoje</button>
+              <button class="btn btn-secondary btn-sm">⟨</button>
+              <button class="btn btn-secondary btn-sm">⟩</button>
+            </div>
+          </div>
+          <button class="btn btn-primary">＋ Nova Atribuição</button>
+        </div>
+
+        <div class="glass-card" style="padding:0; overflow:hidden;">
+          <div id="avazaScheduleTimeline">
+            <!-- Timeline Grid Placeholder -->
+            <div style="padding:100px; text-align:center; color:var(--text-muted);">
+              Carregando Cronograma da Equipe...
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ AVAZA AGENDA PAGE ═══ -->
+      <section id="pageAvazaAgenda" class="page-section">
+        <div class="page-header">
+          <h2>📖 AGENDA</h2>
+          <p>Minhas alocações e compromissos (Estilo Avaza).</p>
+        </div>
+
+        <div class="toolbar">
+          <button class="btn btn-secondary btn-sm">Hoje</button>
+          <div class="flex gap-8 items-center font-bold">Março 2026</div>
+        </div>
+
+        <div id="avazaAgendaList">
+          <div style="padding:100px; text-align:center; color:var(--text-muted);">
+            Nenhuma reserva para este período.
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ AVAZA REPORTS PAGE ═══ -->
+      <section id="pageAvazaReports" class="page-section">
+        <div class="page-header">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2>📈 RELATÓRIOS</h2>
+              <p>Insights e métricas do projeto (Estilo Avaza).</p>
+            </div>
+            <div class="flex gap-12">
+              <button class="btn btn-secondary btn-sm">Estandarte</button>
+              <button class="btn btn-secondary btn-sm">Popular</button>
+              <button class="btn btn-secondary btn-sm">Salvos</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="avazaReportsGrid" class="stats-grid"
+          style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+          <!-- Cards de relatórios -->
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ── Floating Help Button ── -->
+    <button id="floatingHelpBtn" class="floating-help-btn" onclick="openHelpModal()" title="Central de Ajuda">
+      <span class="pulse"></span>
+      <span class="icon">❓</span>
+    </button>
+  </div>
+
+  <!-- ═══════════════════ USER MODAL ═══════════════════ -->
+  <div id="userModalOverlay" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="userModalTitle">Novo Usuário</h3>
+        <button class="modal-close" onclick="closeUserModal()">✕</button>
+      </div>
+      <div class="form-group">
+        <label for="userFullName">Nome Completo</label>
+        <input type="text" id="userFullName" class="form-control" placeholder="Ex: Maria Oliveira" />
+      </div>
+      <div class="form-group">
+        <label for="userEmail">E-mail</label>
+        <input type="email" id="userEmail" class="form-control" placeholder="Ex: maria@empresa.com" />
+      </div>
+      <div class="form-group">
+        <label for="modalUserRole">Função</label>
+        <input type="text" id="modalUserRole" class="form-control"
+          placeholder="Ex: Designer, Desenvolvedor, Analista" />
+      </div>
+      <div class="form-group">
+        <label for="userAccess">Nível de Acesso</label>
+        <select id="userAccess" class="form-control">
+          <option value="Colaborador">Colaborador</option>
+          <option value="Gestor">Gestor</option>
+          <option value="Admin">Admin</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeUserModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveUser()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="projectModalOverlay" class="modal-overlay">
+    <div class="modal" style="max-width:820px;">
+      <div class="modal-header">
+        <h3 id="projectModalTitle">Novo Projeto</h3>
+        <button class="modal-close" onclick="closeProjectModal()">✕</button>
+      </div>
+
+      <div class="modal-body-scroll"
+        style="max-height: 70vh; overflow-y: auto; padding-right: 14px; margin-bottom: 20px;">
+
+        <!-- Section 1: Identificação -->
+        <div class="section-divider">
+          <span class="section-divider-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="3" />
+              <line x1="9" y1="9" x2="15" y2="9" />
+              <line x1="9" y1="13" x2="15" y2="13" />
+              <line x1="9" y1="17" x2="12" y2="17" />
+            </svg>
+          </span>
+          Identificação e Propósito
+        </div>
+        <div class="grid grid-3 gap-16">
+          <div class="form-group">
+            <label for="projectName">Nome do Projeto</label>
+            <input type="text" id="projectName" class="form-control" placeholder="Ex: AgilePulse Dashboard" />
+          </div>
+          <div class="form-group">
+            <label for="projectStatus">Status</label>
+            <select id="projectStatus" class="form-control">
+              <option value="Pendente">Pendente</option>
+              <option value="Em Andamento">Em Andamento</option>
+              <option value="Concluído">Concluído</option>
+              <option value="Pausado">Pausado</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="projectPriority">Prioridade</label>
+            <select id="projectPriority" class="form-control">
+              <option value="Baixa">Baixa</option>
+              <option value="Média" selected>Média</option>
+              <option value="Alta">Alta</option>
+              <option value="Crítico">Crítico</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="projectObjective">Objetivo Geral</label>
+          <textarea id="projectObjective" class="form-control" rows="2"
+            placeholder="O que o projeto resolve?"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="projectJustification">Justificativa</label>
+          <textarea id="projectJustification" class="form-control" rows="2"
+            placeholder="Por que este projeto é importante agora?"></textarea>
+        </div>
+
+        <!-- Section 2: Escopo -->
+        <div class="section-divider" style="margin-top:24px;">
+          <span class="section-divider-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 11 12 14 22 4" />
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+            </svg>
+          </span>
+          Escopo e Entregáveis
+        </div>
+        <div class="form-group">
+          <label for="projectScopeIn">O que será feito</label>
+          <textarea id="projectScopeIn" class="form-control" rows="3"
+            placeholder="Descrição das funcionalidades principais..."></textarea>
+        </div>
+        <div class="form-group">
+          <label for="projectScopeOut">O que NÃO será feito</label>
+          <textarea id="projectScopeOut" class="form-control" rows="2"
+            placeholder="Definição dos limites para evitar o escopo infinito..."></textarea>
+        </div>
+        <div class="form-group">
+          <label for="projectAcceptance">Critérios de Aceite</label>
+          <textarea id="projectAcceptance" class="form-control" rows="2"
+            placeholder="O que define que uma tarefa está pronta e correta?"></textarea>
+        </div>
+
+        <!-- Section 3: Cronograma -->
+        <div class="section-divider" style="margin-top:24px;">
+          <span class="section-divider-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+          </span>
+          Cronograma e Prazos
+        </div>
+        <div class="grid grid-2 gap-16">
+          <div class="form-group">
+            <label for="projectStartDate">Data de Início</label>
+            <input type="date" id="projectStartDate" class="form-control" />
+          </div>
+          <div class="form-group">
+            <label for="projectDeadline">Previsão de Término</label>
+            <input type="date" id="projectDeadline" class="form-control" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Marcos (Milestones)</label>
+          <div id="milestonesList" class="milestones-list mb-8"></div>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="addMilestone()">＋ Adicionar Marco</button>
+        </div>
+
+        <!-- Section 4: Equipe -->
+        <div class="section-divider" style="margin-top:24px;">
+          <span class="section-divider-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          </span>
+          Equipe e Responsabilidades
+        </div>
+        <div class="grid grid-2 gap-16">
+          <div class="form-group">
+            <label for="projectOwner">Dono do Produto (PO)</label>
+            <select id="projectOwner" class="form-control"></select>
+          </div>
+          <div class="form-group">
+            <label for="projectManager">Responsável Técnico/Gestor</label>
+            <select id="projectManager" class="form-control"></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Equipe Alocada (Designer, Dev, QA)</label>
+          <div class="multi-select-container" id="teamMultiSelect">
+            <div class="multi-select-display" onclick="toggleTeamDropdown()">
+              <span class="text-muted text-sm" id="teamPlaceholder">Selecionar membros...</span>
+            </div>
+            <div class="multi-select-dropdown" id="teamDropdown"></div>
+          </div>
+        </div>
+
+        <!-- Section 5: Recursos -->
+        <div class="section-divider" style="margin-top:24px;">
+          <span class="section-divider-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5z" />
+              <path d="M2 17l10 5 10-5" />
+              <path d="M2 12l10 5 10-5" />
+            </svg>
+          </span>
+          Recursos e Ferramentas
+        </div>
+        <div class="grid grid-2 gap-16">
+          <div class="form-group">
+            <label for="projectTech">Tecnologias</label>
+            <input type="text" id="projectTech" class="form-control" placeholder="Ex: Antigravity, React, SQL" />
+          </div>
+          <div class="form-group">
+            <label for="projectBudget">Orçamento (se aplicável)</label>
+            <input type="text" id="projectBudget" class="form-control"
+              placeholder="Verba disponível para ferramentas ou contratações" />
+          </div>
+        </div>
+
+        <!-- Section 6: Riscos -->
+        <div class="section-divider" style="margin-top:24px;">
+          <span class="section-divider-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+          </span>
+          Riscos e Impedimentos
+        </div>
+        <div class="form-group">
+          <label for="projectRiskKnown">Riscos Conhecidos</label>
+          <textarea id="projectRiskKnown" class="form-control" rows="2" placeholder="O que pode dar errado?"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="projectRiskMitigation">Plano de Mitigação</label>
+          <textarea id="projectRiskMitigation" class="form-control" rows="2"
+            placeholder="O que faremos se o risco se concretizar?"></textarea>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeProjectModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveProject()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════ DAILY MODAL ═══════════════════ -->
+  <div id="dailyModalOverlay" class="modal-overlay">
+    <div class="modal" style="max-width:720px;">
+      <div class="modal-header">
+        <h3 id="dailyModalTitle">Novo Registro Daily</h3>
+        <button class="modal-close" onclick="closeDailyModal()">✕</button>
+      </div>
+      <div class="form-group">
+        <label for="dailyDate">Data</label>
+        <input type="date" id="dailyDate" class="form-control" />
+      </div>
+
+      <!-- Comparativo com Daily Anterior (Opcional) -->
+      <div id="prevDailyContainer" class="hidden glass-card mb-16"
+        style="background:rgba(84, 131, 179, 0.05); border: 1px solid rgba(84, 131, 179, 0.2); padding: 12px; margin-top: -8px;">
+        <div class="flex items-center justify-between mb-8">
+          <span class="text-xs font-bold" style="color:var(--primary-blue);">📅 PLANEJADO NA ÚLTIMA DAILY</span>
+          <button class="btn btn-secondary btn-sm" style="font-size:0.65rem; padding:2px 8px;"
+            onclick="copyPrevPlannedToYesterday()">🔗 Copiar para "Ontem"</button>
+        </div>
+        <div id="prevPlannedList" class="text-xs text-muted" style="line-height: 1.4;"></div>
+      </div>
+
+      <!-- O que fiz ontem -->
+      <div class="form-group">
+        <div class="flex items-center gap-8 mb-8">
+          <label style="margin-bottom:0;">O que fiz ontem</label>
+          <button class="btn btn-primary btn-sm" type="button" onclick="addDailyActivity('yesterday')">＋</button>
+        </div>
+        <div id="yesterdayActivities" class="daily-activity-list"></div>
+      </div>
+
+      <!-- O que farei hoje -->
+      <div class="form-group">
+        <div class="flex items-center gap-8 mb-8">
+          <label style="margin-bottom:0;">O que farei hoje</label>
+          <button class="btn btn-primary btn-sm" type="button" onclick="addDailyActivity('today')">＋</button>
+        </div>
+        <div id="todayActivities" class="daily-activity-list"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="dailyBlockers">Observações</label>
+        <textarea id="dailyBlockers" class="form-control" rows="2"
+          placeholder="Descreva aqui seus Impedimentos (opcional)"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeDailyModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveDaily()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ PROJECT DETAIL PANEL ═══════════════════ -->
+  <div id="detailOverlay" class="detail-overlay" onclick="closeDetailPanel()"></div>
+  <div id="detailPanel" class="detail-panel">
+    <div class="detail-panel-header">
+      <h3 id="detailTitle">Projeto</h3>
+      <button class="modal-close" onclick="closeDetailPanel()">✕</button>
+    </div>
+    <div id="detailContent"></div>
+  </div>
+
+  <!-- ═══════════════════ CHANGE PASSWORD MODAL ═══════════════════ -->
+  <div id="changePasswordModalOverlay" class="modal-overlay" style="z-index: 10000;">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="changePasswordModalTitle">Alterar Senha Obrigatória</h3>
+      </div>
+      <p class="text-sm text-muted mb-16">Para sua segurança, você deve alterar a senha padrão no primeiro acesso.</p>
+
+      <div class="form-group">
+        <label for="newPassword">Nova Senha</label>
+        <input type="password" id="newPassword" class="form-control" placeholder="Mínimo 6 caracteres" />
+      </div>
+
+      <div class="form-group">
+        <label for="confirmPassword">Confirmar Nova Senha</label>
+        <input type="password" id="confirmPassword" class="form-control" placeholder="Repita a nova senha" />
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-primary w-full" onclick="saveNewPassword()">Salvar e Entrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ SHARE PROJECT MODAL ═══════════════════ -->
+  <div id="shareModalOverlay" class="modal-overlay" style="z-index: 10002;">
+    <div class="modal" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3>🔗 Compartilhar Projeto</h3>
+        <button class="modal-close" onclick="closeShareModal()">✕</button>
+      </div>
+      <p id="shareProjectName" class="text-sm font-bold mb-16" style="color:var(--primary-blue);"></p>
+      <p class="text-xs text-muted mb-12">Selecione os colaboradores que terão acesso a este projeto:</p>
+
+      <div class="share-users-list" id="shareUsersList"
+        style="max-height: 300px; overflow-y: auto; margin-bottom: 20px;">
+        <!-- Users with checkboxes will be rendered here -->
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeShareModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveShareChanges()">Salvar Alterações</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ ADMIN RESET PASSWORD MODAL ═══════════════════ -->
+  <div id="adminResetPasswordModalOverlay" class="modal-overlay" style="z-index: 10001;">
+    <div class="modal" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3 id="adminResetModalTitle">Resetar Senha de Usuário</h3>
+        <button class="modal-close" onclick="closeAdminResetModal()">✕</button>
+      </div>
+      <p id="resetUserTarget" class="text-sm font-bold mb-16" style="color:var(--primary);"></p>
+
+      <div class="form-group">
+        <label for="adminNewPassword">Nova Senha Temporária</label>
+        <input type="text" id="adminNewPassword" class="form-control" placeholder="Digite a nova senha" />
+      </div>
+
+      <p class="text-xs text-muted mb-16">O usuário será forçado a alterar esta senha no próximo login.</p>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeAdminResetModal()">Cancelar</button>
+        <button class="btn btn-warning" onclick="saveAdminResetPassword()">Resetar Senha</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ DAILY REPORT MODAL ═══════════════════ -->
+  <div id="dailyReportModalOverlay" class="modal-overlay">
+    <div class="modal" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3>📊 Gerar Relatório de Daily</h3>
+        <button class="modal-close" onclick="closeDailyReportModal()">✕</button>
+      </div>
+      <p class="text-xs text-muted mb-16">Escolha o período para consolidar os registros.</p>
+
+      <div class="form-group">
+        <label>Data Inicial</label>
+        <input type="date" id="dailyReportStart" class="form-control" />
+      </div>
+
+      <div class="form-group">
+        <label>Data Final</label>
+        <input type="date" id="dailyReportEnd" class="form-control" />
+      </div>
+
+      <div class="form-group">
+        <label>Colaborador (Opcional)</label>
+        <select id="dailyReportUser" class="form-control">
+          <option value="">Todos os colaboradores</option>
+        </select>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeDailyReportModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="generateDailyPeriodReport()">Gerar Relatório</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ FEEDBACK MODAL (Global) ═══════════════════ -->
+  <div id="feedbackModalOverlay" class="modal-overlay" style="z-index: 20000;">
+    <div class="modal feedback-modal">
+      <div class="feedback-icon success">✓</div>
+      <h3 id="feedbackTitle" class="mb-8">Sucesso!</h3>
+      <p id="feedbackMessage" class="text-sm text-muted mb-24"></p>
+      <div class="modal-actions" style="justify-content: center; margin-top: 0;">
+        <button class="btn btn-primary w-full" onclick="closeFeedbackModal()">Entendido</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ GLOBAL HELP MODAL ═══════════════════ -->
+  <div id="helpModalOverlay" class="modal-overlay" style="z-index: 10005;">
+    <div class="modal" style="max-width: 900px;">
+      <div class="modal-header">
+        <div class="flex items-center gap-8">
+          <span style="font-size: 1.5rem;">📘</span>
+          <h3>Central de Ajuda</h3>
+        </div>
+        <button class="modal-close" onclick="closeHelpModal()">✕</button>
+      </div>
+      
+      <div id="helpContentView" class="modal-body-scroll mt-16" style="min-height: 200px; max-height: 60vh; overflow-y: auto;">
+        <!-- Help text will be rendered here -->
+      </div>
+
+      <div id="helpContentEdit" class="hidden mt-16">
+        <div class="form-group">
+          <label for="helpTextInput" style="font-weight: 700; color: #334155;">Editar Conteúdo de Ajuda (Markdown-like)</label>
+          <textarea id="helpTextInput" class="form-control" rows="12" placeholder="Ex: # Título \n ## Subtítulo \n **texto em negrito** \n ![Alt](URL da Imagem) \n P: Pergunta R: Resposta"></textarea>
+        </div>
+      </div>
+
+      <div id="helpTipFooter" class="hidden mt-16" style="background: #f0f4ff; color: #4f46e5; border-radius: 12px; padding: 10px 15px; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; gap: 8px; border: 1px dashed rgba(79, 70, 229, 0.3);">
+        <span style="font-size: 1rem;">💡</span> 
+        <span>Dica: Use # Título, ## Subtítulo, **Negrito**, ![Alt](URL) para imagem e P: Pergunta R: Resposta.</span>
+      </div>
+
+      <div class="modal-actions mt-24">
+        <div id="helpAdminActions" class="hidden flex gap-8 w-full">
+          <button id="btnToggleEditHelp" class="btn btn-secondary" onclick="toggleEditHelp()">✏️ Editar</button>
+          <button id="btnSaveHelpText" class="btn btn-primary hidden" onclick="saveHelpText()">💾 Salvar Alterações</button>
+        </div>
+        <button id="btnCloseHelpPrimary" class="btn btn-secondary" onclick="closeHelpModal()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="supabaseClient.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>

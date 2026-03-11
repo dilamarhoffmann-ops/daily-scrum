@@ -1,0 +1,200 @@
+/* Global Help Styles - Central de Ajuda Elegante */
+
+/* Botão Flutuante */
+.floating-help-btn {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--primary-blue, #5483B3);
+    color: white;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 8px 32px rgba(84, 131, 179, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.floating-help-btn:hover {
+    transform: scale(1.1) translateY(-5px);
+    box-shadow: 0 12px 40px rgba(84, 131, 179, 0.6);
+}
+
+.floating-help-btn .icon {
+    font-size: 1.5rem;
+    z-index: 2;
+}
+
+.floating-help-btn .pulse {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: inherit;
+    opacity: 0.6;
+    animation: help-pulse 2s infinite;
+}
+
+@keyframes help-pulse {
+    0% { transform: scale(1); opacity: 0.6; }
+    100% { transform: scale(1.8); opacity: 0; }
+}
+
+/* Modal de Ajuda Elegante */
+#helpModalOverlay .modal {
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+}
+
+#helpContentView {
+    line-height: 1.8;
+    color: #444;
+    font-size: 1rem;
+    padding: 10px;
+}
+
+#helpContentView h4 {
+    color: var(--primary-blue, #5483B3);
+    font-size: 1.25rem;
+    margin-top: 24px;
+    margin-bottom: 12px;
+    border-left: 4px solid var(--primary-blue);
+    padding-left: 12px;
+}
+
+#helpContentView p {
+    margin-bottom: 16px;
+}
+
+#helpContentView ul {
+    margin-left: 20px;
+    margin-bottom: 20px;
+    list-style-type: none;
+}
+
+#helpContentView ul li {
+    position: relative;
+    padding-left: 20px;
+    margin-bottom: 8px;
+}
+
+#helpContentView ul li::before {
+    content: "•";
+    color: var(--primary-blue);
+    position: absolute;
+    left: 0;
+    font-weight: bold;
+}
+
+#helpTextInput {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    transition: all 0.2s;
+}
+
+#helpTextInput:focus {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(84, 131, 179, 0.1);
+}
+
+/* Formatação estilo AgilePulse */
+#helpContentView h1 {
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: #1e1b4b;
+    margin: 1.5rem 0 1rem 0;
+    text-transform: uppercase;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+}
+
+#helpContentView h2 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #312e81;
+    margin: 1.25rem 0 0.75rem 0;
+}
+
+#helpContentView h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #2563eb;
+    margin: 1rem 0 0.5rem 0;
+}
+
+#helpContentView strong {
+    font-weight: 700;
+    color: #1e1b4b;
+    background-color: #f0f4ff;
+    padding: 1px 6px;
+    border-radius: 6px;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
+}
+
+#helpContentView img {
+    max-width: 100%;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    margin: 1.5rem 0;
+    border: 1px solid #e2e8f0;
+    transition: transform 0.3s ease;
+}
+
+#helpContentView img:hover {
+    transform: scale(1.02);
+}
+
+#helpContentView .qa-block {
+    margin-bottom: 20px;
+    background: #f8fafc;
+    padding: 15px;
+    border-radius: 12px;
+    border-left: 4px solid #4f46e5;
+}
+
+#helpContentView .qa-question {
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 8px !important;
+}
+
+#helpContentView .qa-question-prefix {
+    color: #4f46e5;
+    font-weight: 900;
+    margin-right: 5px;
+}
+
+#helpContentView .qa-answer {
+    color: #334155;
+}
+
+#helpContentView .qa-answer-prefix {
+    color: #059669;
+    font-weight: 900;
+    margin-right: 5px;
+}
+
+#helpContentView p {
+    margin-bottom: 12px;
+}
+
+/* Sidebar item hide if redundant, but user might want it too */
+.nav-item.help-nav-item {
+    margin-top: auto !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    padding-top: 20px;
+    opacity: 0.7;
+}
