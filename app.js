@@ -45,7 +45,11 @@ let users = loadData(STORAGE_KEYS.users);
 let projects = loadData(STORAGE_KEYS.projects);
 let dailyEntries = loadData(STORAGE_KEYS.dailyEntries);
 let appConfig = loadData(STORAGE_KEYS.appConfig) || [{ id: 'global', helpText: '<h4>Bem-vindo à Central de Ajuda</h4><p>Use este espaço para documentar processos da equipe.</p>' }];
-if (!appConfig.length) appConfig = [{ id: 'global', helpText: '<h4>Bem-vindo à Central de Ajuda</h4><p>Use este espaço para documentar processos da equipe.</p>' }];
+
+// Export to window for debugging
+window.users = users;
+window.projects = projects;
+window.appConfig = appConfig;
 
 // Função para sincronizar dados globais (Help) do Supabase
 async function syncGlobalConfig() {
@@ -119,24 +123,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 1. Tenta carregar dados fresquinhos do Supabase
   if (window.supabaseClient) {
     try {
-      console.log('🔄 Tentando carregar usuários do Supabase...');
       const [u, p, d] = await Promise.all([
         window.supabaseClient.from('users').select('*'),
         window.supabaseClient.from('projects').select('*'),
         window.supabaseClient.from('daily_entries').select('*')
       ]);
 
-      if (u.error) console.error('❌ Erro ao buscar usuários:', u.error);
-      if (u.data) {
-        console.log(`✅ ${u.data.length} usuários carregados do Supabase.`);
-        if (u.data.length > 0) {
-          users = u.data;
-          originalSaveData(STORAGE_KEYS.users, users);
-        }
-      }
+      console.log(`📊 Supabase data received: ${u.data?.length || 0} users, ${p.data?.length || 0} projects, ${d.data?.length || 0} entries`);
 
-      if (p.data && p.data.length > 0) { projects = p.data; originalSaveData(STORAGE_KEYS.projects, projects); }
-      if (d.data && d.data.length > 0) { dailyEntries = d.data; originalSaveData(STORAGE_KEYS.dailyEntries, dailyEntries); }
+      if (u.data && u.data.length > 0) { 
+        users = u.data; 
+        window.users = users;
+        originalSaveData(STORAGE_KEYS.users, users); 
+      }
+      if (p.data && p.data.length > 0) { 
+        projects = p.data; 
+        window.projects = projects;
+        originalSaveData(STORAGE_KEYS.projects, projects); 
+      }
+      if (d.data && d.data.length > 0) { 
+        dailyEntries = d.data; 
+        originalSaveData(STORAGE_KEYS.dailyEntries, dailyEntries); 
+      }
       
       const { data: configData } = await window.supabaseClient.from('app_config').select('*').eq('id', 'global');
       if (configData && configData.length > 0) { 
@@ -175,44 +183,77 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ══════════════════════════════════════════════════════════════
 function populateLoginSelect() {
   const select = document.getElementById('loginSelect');
-  select.innerHTML = '<option value="">Selecione...</option>';
-  const sorted = [...users].sort((a, b) => a.name.localeCompare(b.name));
-  sorted.forEach(u => {
-    const opt = document.createElement('option');
-    opt.value = u.id;
-    opt.textContent = u.name;
-    select.appendChild(opt);
-  });
+  if (!select) {
+    console.error('❌ Element #loginSelect not found!');
+    return;
+  }
+  
+  console.log(`🔄 Populating login select with ${users?.length || 0} users...`);
+  
+  select.innerHTML = '<option value="">Selecione seu usuário...</option>';
+  
+  if (!users || !Array.isArray(users) || users.length === 0) {
+    console.warn('⚠️ No users available to populate login select.');
+    return;
+  }
+
+  try {
+    const validUsers = users.filter(u => u && u.name);
+    const sorted = [...validUsers].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    
+    sorted.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.id;
+      opt.textContent = u.name;
+      select.appendChild(opt);
+    });
+    console.log('✅ Login select populated successfully.');
+  } catch (err) {
+    console.error('❌ Error sorting/populating users:', err);
+  }
 }
 
 function doLogin() {
-  const id = document.getElementById('loginSelect').value;
-  const pass = document.getElementById('loginPassword').value;
+  console.log('🚀 doLogin() triggered');
+  const idValue = document.getElementById('loginSelect').value;
+  const passValue = document.getElementById('loginPassword').value;
+  
+  console.log('ID selected:', idValue);
+  console.log('Password length:', passValue ? passValue.length : 0);
 
-  if (!id) { alert('Selecione um usuário.'); return; }
-  if (!pass) { alert('Digite a senha.'); return; }
+  if (!idValue) { alert('Selecione um usuário.'); return; }
+  if (!passValue) { alert('Digite a senha.'); return; }
 
-  const user = users.find(u => u.id === id) || null;
-  if (!user) return;
+  const user = users.find(u => u.id === idValue) || null;
+  console.log('User found in memory:', user ? user.name : 'NOT FOUND');
+
+  if (!user) {
+    alert('Erro: Usuário não encontrado na base de dados local.');
+    return;
+  }
 
   // Compat: user without password uses default
   const userPass = user.password || DEFAULT_PASSWORD;
 
-  if (pass !== userPass) {
+  if (passValue !== userPass) {
+    console.warn('❌ Password mismatch!');
     alert('Senha incorreta!');
     return;
   }
 
+  console.log('✅ Password correct. Proceeding to login...');
   currentUser = user;
 
   // Force password change on first login (no custom password set yet)
   // or if admin explicitly flagged the user
   if (!user.password || user.mustChangePassword === true) {
+    console.log('⚠️ Password change required.');
     openChangePasswordModal(user.id);
     return;
   }
 
   localStorage.setItem(STORAGE_KEYS.currentUser, JSON.stringify(currentUser));
+  console.log('🏠 Showing app...');
   showApp();
 }
 
@@ -3380,3 +3421,52 @@ async function saveHelpText() {
   toggleEditHelp();
   renderHelpContent();
 }
+
+// ══════════════════════════════════════════════════════════════
+//  EXPOSE TO WINDOW (for inline onclick/onchange etc. in HTML)
+// ══════════════════════════════════════════════════════════════
+Object.assign(window, {
+  addDailyActivity,
+  addMilestone,
+  adminResetPassword,
+  closeAdminResetModal,
+  closeDailyModal,
+  closeDailyReportModal,
+  closeDetailPanel,
+  closeFeedbackModal,
+  closeHelpModal,
+  closeProjectModal,
+  closeShareModal,
+  closeUserModal,
+  copyPrevPlannedToYesterday,
+  doLogin,
+  doLogout,
+  editUser,
+  generateDailyPeriodReport,
+  generateMarkedReport,
+  openDailyModal,
+  openDailyReportModal,
+  openHelpModal,
+  openProjectModal,
+  openUserModal,
+  renderDailyPage,
+  renderFlowDashboard,
+  renderProjectsKanban,
+  renderUsersTable,
+  saveAdminResetPassword,
+  saveDaily,
+  saveHelpText,
+  saveNewPassword,
+  saveProject,
+  saveShareChanges,
+  saveUser,
+  switchPage,
+  toggleEditHelp,
+  toggleLoginPassword,
+  toggleTeamDropdown,
+  // Additional utility/page functions
+  renderConfigPage,
+  renderProjectsPage,
+  renderFlowPage,
+  openChangePasswordModal,
+});
