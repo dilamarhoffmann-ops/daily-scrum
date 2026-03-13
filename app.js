@@ -87,6 +87,35 @@ if (users.length === 0) {
 }
 
 // ── Função de Sincronização Supabase ──────────────────────────
+/**
+ * Sanitiza os dados antes de enviar ao Supabase, removendo colunas inexistentes no schema
+ */
+function sanitizeSupabaseData(table, data) {
+  const whitelist = {
+    users: ['id', 'name', 'email', 'role', 'access', 'password', 'mustChangePassword', 'created_at'],
+    projects: ['id', 'name', 'status', 'priority', 'objective', 'justification', 'scopeIn', 'scopeOut', 'acceptance', 'startDate', 'deadline', 'milestones', 'ownerId', 'managerId', 'team', 'tech', 'budget', 'riskKnown', 'riskMitigation', 'tasks', 'impediments', 'resolvedHistory', 'created_at'],
+    daily_entries: ['id', 'userId', 'date', 'blockers', 'yesterdayActivities', 'todayActivities', 'createdAt', 'created_at'],
+    app_config: ['id', 'helpText', 'updatedAt']
+  };
+
+  const columns = whitelist[table];
+  if (!columns) return data; // Se não houver whitelist, envia como está
+
+  const cleanItem = (item) => {
+    const clean = {};
+    columns.forEach(col => {
+      // PostgREST/Supabase entende camelCase se as colunas forem citadas, 
+      // mas aqui garantimos que apenas o que está no banco seja enviado.
+      if (item.hasOwnProperty(col) && item[col] !== undefined) {
+        clean[col] = item[col];
+      }
+    });
+    return clean;
+  };
+
+  return Array.isArray(data) ? data.map(cleanItem) : cleanItem(data);
+}
+
 async function syncToSupabase(key, arrayData) {
   if (!window.supabaseClient) return;
   try {
@@ -97,8 +126,10 @@ async function syncToSupabase(key, arrayData) {
         key === STORAGE_KEYS.appConfig ? 'app_config' : null;
 
     if (table) {
-      // Para prototipagem: Upserta o array todo no banco assincronamente (Fire-and-forget)
-      const { error } = await window.supabaseClient.from(table).upsert(arrayData);
+      // Higieniza os dados para evitar erro de "column not found"
+      const sanitizedData = sanitizeSupabaseData(table, arrayData);
+      
+      const { error } = await window.supabaseClient.from(table).upsert(sanitizedData);
       if (error) {
         console.error(`Supabase upsert error na tabela ${table}:`, error);
         // Exibe um alerta visual pro usuário não perder dados sem saber
@@ -2481,10 +2512,23 @@ let modalYesterdayActivities = [];
 let modalTodayActivities = [];
 let modalPrevPlannedActivities = [];
 
-function buildProjectOptions() {
-  const visibleProjects = getVisibleProjects();
+function buildProjectOptions(currentProjectId) {
+  // Para o seletor da Daily, mostramos apenas os projetos do usuário logado
+  // (Dono, Gestor ou Equipe), mesmo se for Admin/Gestor global.
+  const myProjects = projects.filter(p => 
+    p.status !== 'Arquivado' && (
+      p.ownerId === currentUser.id || 
+      p.managerId === currentUser.id || 
+      (p.team && p.team.includes(currentUser.id)) ||
+      p.id === currentProjectId // Mantém visível se já estava selecionado (ex: edição)
+    )
+  );
+
+  // Ordenar alfabeticamente para facilitar a busca
+  myProjects.sort((a, b) => a.name.localeCompare(b.name));
+
   return '<option value="">— Projeto —</option>' +
-    visibleProjects.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+    myProjects.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
 }
 
 function buildUserOptions() {
@@ -2498,7 +2542,7 @@ function renderActivityRow(section, index, act) {
     <div class="daily-activity-row" data-section="${section}" data-index="${index}" style="border-left: 3px solid #5483B3; padding-left:12px;">
       <div class="grid grid-2 gap-8 mb-8">
         <select class="form-control text-xs" onchange="updateDailyActivity('${section}', ${index}, 'projectId', this.value)">
-          ${buildProjectOptions().replace(`value="${act.projectId || ''}"`, `value="${act.projectId || ''}" selected`)}
+          ${buildProjectOptions(act.projectId).replace(`value="${act.projectId || ''}"`, `value="${act.projectId || ''}" selected`)}
         </select>
         <select class="form-control text-xs" onchange="updateDailyActivity('${section}', ${index}, 'collaboratorId', this.value)">
           ${buildUserOptions().replace(`value="${act.collaboratorId || ''}"`, `value="${act.collaboratorId || ''}" selected`)}
@@ -2684,16 +2728,16 @@ function saveDaily() {
   if (editingDailyId) {
     const idx = dailyEntries.findIndex(e => e.id === editingDailyId);
     if (idx !== -1) {
+      // Construção explícita para evitar carregar campos obsoletos/sujeira
       dailyEntries[idx] = {
-        ...dailyEntries[idx],
+        id: dailyEntries[idx].id,
+        userId: dailyEntries[idx].userId,
         date,
         yesterdayActivities,
         todayActivities,
         blockers,
-        // Clear old fields
-        todayTasks: undefined,
-        tomorrowTasks: undefined,
-        projectId: undefined,
+        createdAt: dailyEntries[idx].createdAt || Date.now(),
+        created_at: dailyEntries[idx].created_at || new Date().toISOString()
       };
     }
   } else {
