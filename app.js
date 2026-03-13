@@ -1195,7 +1195,9 @@ function saveProject() {
   const tempProject = { tasks: editingProjectId ? (projects.find(p => p.id === editingProjectId)?.tasks || []) : [] };
   const progress = calculateProgress(tempProject);
 
-  if (status === 'Concluído' && progress < 100) {
+  const validTasksCount = tempProject.tasks.filter(t => t.status !== 'Cancelado').length;
+
+  if (status === 'Concluído' && validTasksCount > 0 && progress < 100) {
     alert(`Não é possível concluir o projeto. Ainda existem tarefas pendentes (${progress}% concluído).`);
     return;
   }
