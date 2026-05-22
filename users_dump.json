@@ -1,0 +1,143 @@
+Users in Supabase: 14
+[
+  {
+    "id": "gh_user_SR-JorgeHenrique",
+    "name": "Jorge Henrique",
+    "email": "jorge.henrique@redesaoroque.com.br",
+    "role": "Gerente Desenvolvimento",
+    "access": "Gestor",
+    "password": "admin123",
+    "mustChangePassword": true,
+    "created_at": "2026-03-09T15:07:25.856092+00:00"
+  },
+  {
+    "id": "gh_user_germano-saoroque",
+    "name": "Germano Freitas",
+    "email": "germano.freitas@redesaoroque.com.br",
+    "role": "Desenvolvedor",
+    "access": "Colaborador",
+    "password": "admin123",
+    "mustChangePassword": true,
+    "created_at": "2026-03-09T15:14:25.547294+00:00"
+  },
+  {
+    "id": "gh_user_luisgustavo-saoroque",
+    "name": "Luis Gustavo",
+    "email": "luis.gustavo@redesaoroque.com.br",
+    "role": "Desenvolvedor",
+    "access": "Colaborador",
+    "password": "admin123",
+    "mustChangePassword": true,
+    "created_at": "2026-03-09T14:17:30.1078+00:00"
+  },
+  {
+    "id": "gh_user_viniciussilva178",
+    "name": "Vinicius Silva",
+    "email": "vinicius.silva@redesaoroque.com.br",
+    "role": "Desenvolvedor",
+    "access": "Colaborador",
+    "password": "admin123",
+    "mustChangePassword": true,
+    "created_at": "2026-03-09T15:14:25.720513+00:00"
+  },
+  {
+    "id": "gh_user_lucasrdsq",
+    "name": "Lucas Oliveira",
+    "email": "lucas.oliveira@redesaoroque.com.br",
+    "role": "BI",
+    "access": "Colaborador",
+    "password": "admin123",
+    "mustChangePassword": true,
+    "created_at": "2026-03-09T14:21:37.391789+00:00"
+  },
+  {
+    "id": "user_pdf_david_mmjcvb4t",
+    "name": "David Oliveira",
+    "email": "david.oliveira@redesaoroque.com.br",
+    "role": "Aux. Técnico",
+    "access": "Colaborador",
+    "password": "admin123",
+    "mustChangePassword": true,
+    "created_at": "2026-03-09T15:48:16.50342+00:00"
+  },
+  {
+    "id": "admin_1",
+    "name": "Administrador",
+    "email": "admin@gestorgn.com",
+    "role": "Administrador",
+    "access": "Admin",
+    "password": "123mudar",
+    "mustChangePassword": true,
+    "created_at": "2026-03-11T21:24:27.72761+00:00"
+  },
+  {
+    "id": "user_pdf_luiz_benincasa_mmjcvc5u",
+    "name": "Luiz Benincasa",
+    "email": "luiz.benincasa@redesaoroque.com.br",
+    "role": "Desenvolvedor",
+    "access": "Colaborador",
+    "password": "admin123",
+    "mustChangePassword": true,
+    "created_at": "2026-03-09T15:48:17.810744+00:00"
+  },
+  {
+    "id": "gh_user_GilbertSampaioSR",
+    "name": "Gilbert Sampaio",
+    "email": "GilbertSampaioSR@github.com",
+    "role": "Infraestrutura",
+    "access": "Colaborador",
+    "password": "admin123",
+    "mustChangePassword": true,
+    "created_at": "2026-03-09T20:49:45.555645+00:00"
+  },
+  {
+    "id": "user_pdf_gilbert_mmjcvckf",
+    "name": "Gilbert Sampaio",
+    "email": "gilbert.sampaio@redesaoroque.com.br",
+    "role": "Infraestrutura",
+    "access": "Colaborador",
+    "password": "admin123",
+    "mustChangePassword": true,
+    "created_at": "2026-03-09T15:48:18.343256+00:00"
+  },
+  {
+    "id": "user_pdf_menezes_mmjcvcz3",
+    "name": "Menezes",
+    "email": "huiller.menezes@redesaoroque.com.br",
+    "role": "Desenvolvedor",
+    "access": "Colaborador",
+    "password": "admin123",
+    "mustChangePassword": true,
+    "created_at": "2026-03-09T15:48:18.864242+00:00"
+  },
+  {
+    "id": "user_pdf_dilamar_mmjcvdo9",
+    "name": "Dilamar Hoffmann",
+    "email": "dilamar.hoffmann@redesaoroque.com.br",
+    "role": "Analista de Processos",
+    "access": "Gestor",
+    "password": "92189713",
+    "mustChangePassword": false,
+    "created_at": "2026-03-09T15:48:19.773558+00:00"
+  },
+  {
+    "id": "gh_user_GuilhermeRodrigues5",
+    "name": "Guilherme Rodrigues",
+    "email": "guilherme.rodrigues@redesaoroque.com.br",
+    "role": "Desenvolvedor",
+    "access": "Colaborador",
+    "password": "admin123",
+    "mustChangePassword": true,
+    "created_at": "2026-03-09T14:21:41.527154+00:00"
+  },
+  {
+    "id": "gh_user_rangel-rs",
+    "name": "Rangel Pereira",
+    "email": "rangel.pereira@redesaoroque.com.br",
+    "role": "Desenvolvedor",
+    "access": "Colaborador",
+    "password": "admin123",
+    "mustChangePassword": true,
+    "created_at": "2026-03-09T17:56:51.517602+00:00"
+  }
+]
