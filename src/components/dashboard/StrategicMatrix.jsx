@@ -33,7 +33,7 @@ export default function StrategicMatrix({ projects, tasks, confirmedUsers, darkM
         className="bg-white p-20 rounded-none border-2 border-slate-200 flex flex-col items-center justify-center text-center"
       >
         <div className="w-16 h-16 bg-slate-800 rounded-none flex items-center justify-center text-white mb-6">
-          <Users size={32} />
+          <Users size={24} />
         </div>
         <h4 className="text-2xl font-black text-slate-800 uppercase tracking-tighter mb-2">Sem Alocações Ativas</h4>
         <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest max-w-xs">
@@ -66,7 +66,7 @@ export default function StrategicMatrix({ projects, tasks, confirmedUsers, darkM
         <div>
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2.5 bg-slate-800 rounded-none text-white">
-              <Users size={20} />
+              <Users size={16} />
             </div>
             <h4 className="text-3xl font-black text-slate-800 uppercase tracking-tighter">Strategic Heatmap</h4>
           </div>
@@ -93,7 +93,7 @@ export default function StrategicMatrix({ projects, tasks, confirmedUsers, darkM
             <tr>
               <th className="text-left p-6 sticky left-0 bg-white z-20 min-w-[280px] rounded-none border-2 border-slate-200">
                 <div className="flex items-center gap-3">
-                  <Briefcase size={16} className="text-slate-800" />
+                  <Briefcase size={14} className="text-slate-800" />
                   <span className="text-xs font-bold text-slate-800 uppercase tracking-[0.2em]">Project Portfolio</span>
                 </div>
               </th>
@@ -236,7 +236,7 @@ export default function StrategicMatrix({ projects, tasks, confirmedUsers, darkM
         </div>
         
         <div className="flex items-center gap-2 text-slate-800">
-           <Info size={14} />
+           <Info size={12} />
            <span className="text-[10px] font-bold uppercase tracking-widest">Valores baseados em estimativas de tarefas ativas</span>
         </div>
       </div>

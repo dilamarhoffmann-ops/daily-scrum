@@ -14,7 +14,7 @@ export default function TeamEngagement({ involvedUsers, workingDays }) {
   if (!involvedUsers || involvedUsers.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50 dark:bg-slate-900/50 rounded-[40px] border border-dashed border-slate-200 dark:border-slate-800">
-        <Users className="text-slate-300 mb-4" size={48} />
+        <Users className="text-slate-300 mb-4" size={32} />
         <p className="text-slate-400 font-black uppercase tracking-widest text-xs">Nenhum dado de engajamento disponível</p>
       </div>
     );
@@ -52,7 +52,7 @@ export default function TeamEngagement({ involvedUsers, workingDays }) {
 
         <div className="bg-white dark:bg-slate-900 p-8 rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-            <Zap size={120} />
+            <Zap size={80} />
           </div>
           <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] mb-8">Saúde Operacional do Time</h4>
           
@@ -127,7 +127,7 @@ export default function TeamEngagement({ involvedUsers, workingDays }) {
         <div className="flex flex-col gap-6">
           <div className="card-pastel-purple p-8 rounded-[40px] text-violet-950 border shadow-xl relative overflow-hidden premium-shadow">
              <div className="absolute -right-10 -bottom-10 opacity-5">
-               <TrendingUp size={200} />
+               <TrendingUp size={120} />
              </div>
              <p className="text-[10px] font-black uppercase tracking-[0.3em] mb-2 text-violet-500">Índice de Sprint</p>
              <h3 className="text-4xl font-black tracking-tighter mb-6">Alta Performance</h3>
@@ -144,7 +144,7 @@ export default function TeamEngagement({ involvedUsers, workingDays }) {
           </div>
 
           <div className="bg-white dark:bg-slate-900 p-8 rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm flex-1">
-             <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] mb-6">Diferença de Esforço (Real vs Est)</h4>
+             <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] mb-6">Diferença de Esforço (Real vs Estimado)</h4>
              <div className="h-[200px] w-full">
                <ResponsiveContainer width="99%" height="100%">
                  <BarChart data={involvedUsers} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
@@ -161,6 +161,7 @@ export default function TeamEngagement({ involvedUsers, workingDays }) {
                      cursor={{fill: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}}
                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', backgroundColor: darkMode ? '#1e293b' : '#fff' }}
                      labelStyle={{ fontWeight: 900, color: darkMode ? '#f8fafc' : '#1e293b', marginBottom: '4px', fontSize: '10px', textTransform: 'uppercase' }}
+                     itemStyle={{ fontWeight: 700, color: darkMode ? '#f8fafc' : '#475569' }}
                    />
                    <Bar name="Estimado" dataKey="assignedHours" fill={darkMode ? '#334155' : '#e2e8f0'} radius={[4, 4, 0, 0]} barSize={12} />
                    <Bar name="Realizado" dataKey="actualHours" radius={[4, 4, 0, 0]} barSize={12}>

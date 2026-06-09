@@ -49,7 +49,7 @@ export default function ExecutiveDashboard({ projects, tasks, userStories, confi
            <p className="text-sm font-semibold text-slate-500 mb-2">Saúde do Portfólio</p>
            <div className="flex items-baseline gap-2">
              <h3 className="text-4xl font-bold text-slate-800">{Math.round(healthScore)}%</h3>
-             <TrendingUp size={20} className="text-[var(--primary-blue)]" />
+             <TrendingUp size={16} className="text-[var(--primary-blue)]" />
            </div>
            <p className="text-xs font-medium text-[var(--primary-blue)] mt-2">Estável & Saudável</p>
         </div>
@@ -87,7 +87,7 @@ export default function ExecutiveDashboard({ projects, tasks, userStories, confi
                 <p className="text-sm font-medium text-slate-500 mt-1">Histórico de Velocidade vs Capacidade</p>
               </div>
               <div className="p-3 bg-[var(--ice-blue)] text-[var(--primary-blue)] rounded-xl">
-                <Activity size={20} />
+                <Activity size={16} />
               </div>
            </div>
            

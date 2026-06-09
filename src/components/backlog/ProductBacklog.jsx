@@ -8,14 +8,18 @@ import useAgileStore from '../../store/useAgileStore';
 import Modal from '../common/Modal';
 import { getEpicColor } from '../../lib/colorUtils';
 
-const StoryCard = ({ story, tasks, epicName, onEdit, onDelete, onAddTask, onMoveToSprint, onReorder, canDelete }) => {
+const StoryCard = ({ story, tasks, epicName, onEdit, onDelete, onAddTask, onMoveToSprint, onReorder, canDelete, storyPriority, isReadOnly }) => {
   const color = getEpicColor(story.epic_id);
   const isInSprint = !!story.sprint_id;
+  
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter(t => t.status === 'done').length;
+  const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
   
   return (
     <div 
       onClick={(e) => { 
-        if (e.target === e.currentTarget || e.currentTarget.contains(e.target)) {
+        if (!isReadOnly && (e.target === e.currentTarget || e.currentTarget.contains(e.target))) {
           onEdit(story); 
         }
       }}
@@ -37,24 +41,7 @@ const StoryCard = ({ story, tasks, epicName, onEdit, onDelete, onAddTask, onMove
         <div className={`absolute -right-20 -top-20 w-64 h-64 ${color.bg} opacity-[0.03] blur-[100px] rounded-full pointer-events-none`} />
       )}
 
-      {/* Priority Controls */}
-      <div className="flex flex-col gap-2 justify-center border-r-2 border-slate-50 dark:border-white/5 pr-6 opacity-0 group-hover:opacity-100 transition-all">
-        <button 
-          onClick={(e) => { e.stopPropagation(); onReorder(story.id, 'up'); }}
-          className={`p-1.5 bg-slate-50 dark:bg-slate-800 hover:text-white rounded-lg text-slate-400 transition-all cursor-pointer ${isInSprint ? `hover:${color.bg}` : 'hover:bg-phase-po'}`}
-          title="Subir Prioridade"
-        >
-          <ChevronUp size={20} />
-        </button>
-        <div className="text-[10px] font-black text-slate-500 dark:text-slate-500 text-center uppercase">PRIO</div>
-        <button 
-          onClick={(e) => { e.stopPropagation(); onReorder(story.id, 'down'); }}
-          className={`p-1.5 bg-slate-50 dark:bg-slate-800 hover:text-white rounded-lg text-slate-400 transition-all cursor-pointer ${isInSprint ? `hover:${color.bg}` : 'hover:bg-phase-po'}`}
-          title="Baixar Prioridade"
-        >
-          <ChevronDown size={20} />
-        </button>
-      </div>
+
 
       <div className="flex-1 flex flex-col gap-6">
         <div className="flex justify-between items-start">
@@ -62,12 +49,6 @@ const StoryCard = ({ story, tasks, epicName, onEdit, onDelete, onAddTask, onMove
             <div className="flex items-center gap-2 mb-2">
               <span className={`badge-harmony ${color.text} border-2 ${color.border}`}>
                 {epicName || 'Sem Épico'}
-              </span>
-              <span className="badge-harmony badge-harmony-neutral border-2">
-                User Story
-              </span>
-              <span className="badge-harmony badge-harmony-neutral border-2">
-                {story.story_points} SP
               </span>
               {story.backlog_justification && !isInSprint && (
                 <span className="badge-harmony badge-harmony-danger border-2">
@@ -84,41 +65,62 @@ const StoryCard = ({ story, tasks, epicName, onEdit, onDelete, onAddTask, onMove
             <h3 className="text-xl font-bold text-slate-800 leading-none mt-2">
               {story.title}
             </h3>
+            
+            {/* Story Progress Bar */}
+            {totalTasks > 0 && (
+              <div className="mt-4 max-w-md">
+                <div className="flex justify-between items-end mb-1">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                    Progresso das Tarefas
+                  </span>
+                  <span className="text-xs font-bold text-slate-600">
+                    {completedTasks}/{totalTasks} ({progressPercent}%)
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full transition-all duration-500 ${color.bg}`}
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-3">
-            <button 
-              onClick={(e) => { e.stopPropagation(); onMoveToSprint(story.id); }}
-              className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all shadow-xl hover:scale-105 active:scale-95 ${
-                isInSprint 
-                  ? 'bg-white dark:bg-slate-900 text-brand-success border-2 border-brand-success/30 shadow-brand-success/10' 
-                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-2 border-slate-100 dark:border-slate-700 hover:border-brand-primary hover:text-brand-primary'
-              }`}
-            >
-              {isInSprint ? <Check size={16} /> : <Rocket size={16} />}
-              {isInSprint ? 'Planejada' : 'Lançar Foguete'}
-            </button>
-            <button 
-              onClick={(e) => { e.stopPropagation(); onAddTask(story.id); }}
-              className="flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-[11px] uppercase tracking-widest bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-2 border-slate-100 dark:border-slate-700 hover:border-brand-primary hover:text-brand-primary transition-all shadow-xl hover:scale-105 active:scale-95"
-            >
-              <Plus size={20} />
-              Quebrar em Tarefas
-            </button>
-            {canDelete && (
+            {!isReadOnly && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onMoveToSprint(story.id); }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all shadow-md hover:scale-105 active:scale-95 ${
+                  isInSprint 
+                    ? 'bg-white dark:bg-slate-900 text-brand-success border-2 border-brand-success/30 shadow-brand-success/10' 
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-2 border-slate-100 dark:border-slate-700 hover:border-brand-primary hover:text-brand-primary'
+                }`}
+              >
+                {isInSprint ? <Check size={14} /> : <Rocket size={14} />}
+                {isInSprint ? 'Planejada' : 'Lançar Foguete'}
+              </button>
+            )}
+
+            {canDelete && !isReadOnly && (
               <div className="flex gap-2">
                 <button 
                   onClick={(e) => { e.stopPropagation(); onEdit(story); }}
-                  className="p-3 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 text-slate-300 dark:text-slate-600 hover:text-brand-primary hover:border-brand-primary/20 rounded-2xl transition-all shadow-md"
+                  className="p-2 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 text-slate-300 dark:text-slate-600 hover:text-brand-primary hover:border-brand-primary/20 rounded-xl transition-all shadow-md"
                 >
-                  <Pencil size={20} />
+                  <Pencil size={15} />
                 </button>
                 <button 
                   onClick={(e) => { e.stopPropagation(); onDelete(story.id); }}
-                  className="p-3 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 text-slate-300 dark:text-slate-600 hover:text-brand-danger hover:border-brand-danger/20 rounded-2xl transition-all shadow-md"
+                  className="p-2 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 text-slate-300 dark:text-slate-600 hover:text-brand-danger hover:border-brand-danger/20 rounded-xl transition-all shadow-md"
                 >
-                  <Trash2 size={20} />
+                  <Trash2 size={15} />
                 </button>
               </div>
+            )}
+            {isReadOnly && (
+              <span className="text-[10px] font-bold text-amber-600 dark:text-amber-500 uppercase tracking-widest bg-amber-50 dark:bg-amber-950/20 px-3 py-1.5 rounded-lg border border-amber-200/30">
+                Somente Leitura
+              </span>
             )}
           </div>
         </div>
@@ -130,8 +132,13 @@ const StoryCard = ({ story, tasks, epicName, onEdit, onDelete, onAddTask, onMove
               {/* Accent Bar */}
               <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${isInSprint ? color.bg : 'bg-slate-300 dark:bg-slate-600'}`} />
               
-              <div className={`absolute top-3 right-3 text-[10px] font-black px-2 py-0.5 rounded-md ${isInSprint ? `${color.bg} text-white` : 'bg-slate-100 dark:bg-slate-700 text-slate-500'}`}>
-                {task.estimated_hours}h
+              <div className="flex justify-between items-center pl-2 mb-2">
+                <span className="text-[8px] font-black px-2 py-0.5 rounded-md bg-amber-500 text-white shadow-sm">
+                  Prio {storyPriority}
+                </span>
+                <div className={`text-[10px] font-black px-2 py-0.5 rounded-md ${isInSprint ? `${color.bg} text-white` : 'bg-slate-100 dark:bg-slate-700 text-slate-500'}`}>
+                  {task.estimated_hours}h
+                </div>
               </div>
               
               <div className="flex-1 pr-6 pl-2 mt-1">
@@ -176,7 +183,8 @@ const StoryCard = ({ story, tasks, epicName, onEdit, onDelete, onAddTask, onMove
   );
 };
 
-const EpicCard = ({ epic, stories, tasks, onAddStory, onEditStory, onMoveToSprint, onMoveStoryToSprint, onDelete, onDeleteStory, onReorderStories, onReorder, onAddStoryToStory, canDelete, isFinished, rank }) => {
+const EpicCard = ({ epic, stories, tasks, onAddStory, onEditStory, onMoveToSprint, onMoveStoryToSprint, onDelete, onDeleteStory, onReorderStories, onReorder, onAddStoryToStory, canDelete, isFinished, rank, isReadOnly }) => {
+  const { userStories, activeProjectId } = useAgileStore();
   const [expanded, setExpanded] = useState(!isFinished);
   const color = getEpicColor(epic.id);
   
@@ -191,7 +199,7 @@ const EpicCard = ({ epic, stories, tasks, onAddStory, onEditStory, onMoveToSprin
         className={`p-8 cursor-pointer flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 transition-all duration-300 bg-white hover:bg-slate-50 ${expanded ? `border-b border-slate-100` : ''}`}
       >
         <div className="flex items-center gap-8">
-           {!isFinished && (
+           {!isFinished && !isReadOnly && (
             <div className="flex flex-col items-center bg-slate-50 border border-slate-200/80 p-2 rounded-xl gap-0.5 shadow-sm">
               <button 
                 onClick={(e) => { e.stopPropagation(); onReorder(epic.id, 'up'); }}
@@ -212,15 +220,8 @@ const EpicCard = ({ epic, stories, tasks, onAddStory, onEditStory, onMoveToSprin
             </div>
           )}
 
-          <div className={`w-16 h-16 rounded-2xl ${color.light} ${color.text} flex items-center justify-center shadow-sm border ${color.border}`}>
-            <ChevronDown size={28} />
-          </div>
-
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-3">
-               <span className={`text-[10px] font-black ${color.light} ${color.text} px-4 py-2 rounded-xl uppercase tracking-[0.25em] border ${color.border} shadow-sm`}>
-                 Épico Estratégico
-               </span>
                <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
                   <div className={`w-2 h-2 rounded-full ${color.bg} animate-pulse`} />
                   <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">
@@ -252,32 +253,16 @@ const EpicCard = ({ epic, stories, tasks, onAddStory, onEditStory, onMoveToSprin
           </div>
           
           <div className="flex items-center gap-4 w-full md:w-auto justify-end">
-             {!isFinished && (
-               <button 
-                onClick={(e) => { e.stopPropagation(); onMoveToSprint(epic.id); }}
-                className={`flex items-center gap-3 px-8 py-4 rounded-[24px] font-black text-[11px] uppercase tracking-widest transition-all shadow-xl bg-white dark:bg-slate-800 border-[3px] border-slate-100 dark:border-slate-700 hover:border-brand-primary hover:text-brand-primary hover:scale-105 active:scale-95`}
-              >
-                <Rocket size={20} />
-                Lançar Épico
-              </button>
-             )}
-             <button 
-                onClick={(e) => { e.stopPropagation(); onAddStory(epic.id); }}
-                className={`flex items-center gap-3 ${color.bg} text-white px-8 py-4 rounded-[24px] transition-all shadow-xl hover:scale-105 active:scale-95 border-2 border-white/20 font-black text-[11px] uppercase tracking-widest`}
-              >
-                <Plus size={20} />
-                Quebrar em Histórias
-              </button>
-             {canDelete && (
+             {canDelete && !isReadOnly && (
                 <button 
                   onClick={(e) => { e.stopPropagation(); onDelete(epic.id); }}
-                  className="p-4 border-[3px] border-slate-100 dark:border-slate-800 text-slate-300 dark:text-slate-600 hover:text-brand-danger hover:border-brand-danger/20 rounded-[24px] transition-all"
+                  className="p-2.5 border-2 border-slate-100 dark:border-slate-800 text-slate-300 dark:text-slate-600 hover:text-brand-danger hover:border-brand-danger/20 rounded-xl transition-all"
                 >
-                  <Trash2 size={28} />
+                  <Trash2 size={18} />
                 </button>
              )}
-             <div className={`p-4 rounded-[24px] bg-slate-50 dark:bg-slate-900 text-slate-400 border-[3px] border-slate-100 dark:border-slate-800 transition-all duration-500 ${expanded ? 'rotate-180 bg-white dark:bg-slate-800 border-brand-primary/20 text-brand-primary shadow-lg' : ''}`}>
-                <ChevronDown size={28} />
+             <div className={`p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-400 border-2 border-slate-100 dark:border-slate-800 transition-all duration-500 ${expanded ? 'rotate-180 bg-white dark:bg-slate-800 border-brand-primary/20 text-brand-primary shadow-md' : ''}`}>
+                <ChevronDown size={18} />
              </div>
           </div>
         </div>
@@ -293,30 +278,48 @@ const EpicCard = ({ epic, stories, tasks, onAddStory, onEditStory, onMoveToSprin
             </div>
           </div>
           <div className="flex flex-col gap-8">
-            {stories.map(story => (
-            <StoryCard 
-              key={story.id}
-              story={story}
-              epicName={epic.title}
-              tasks={tasks.filter(t => t.story_id === story.id)}
-              onEdit={onEditStory}
-              onDelete={onDeleteStory}
-              onAddTask={onAddStory}
-              onMoveToSprint={onMoveStoryToSprint}
-              onReorder={onReorderStories}
-              canDelete={canDelete}
-            />
-          ))}
+            {[...stories].sort((a, b) => {
+              if ((a.priority_order || 0) !== (b.priority_order || 0)) {
+                return (a.priority_order || 0) - (b.priority_order || 0);
+              }
+              return a.id.localeCompare(b.id);
+            }).map(story => {
+              const sortedStories = [...userStories]
+                .filter(s => s.project_id === activeProjectId)
+                .sort((a, b) => {
+                  if ((a.priority_order || 0) !== (b.priority_order || 0)) {
+                    return (a.priority_order || 0) - (b.priority_order || 0);
+                  }
+                  return a.id.localeCompare(b.id);
+                });
+              const storyPriority = sortedStories.findIndex(s => s.id === story.id) + 1;
+              return (
+                <StoryCard 
+                  key={story.id}
+                  story={story}
+                  epicName={epic.title}
+                  tasks={tasks.filter(t => t.story_id === story.id)}
+                  onEdit={onEditStory}
+                  onDelete={onDeleteStory}
+                  onAddTask={onAddStoryToStory}
+                  onMoveToSprint={onMoveStoryToSprint}
+                  onReorder={onReorderStories}
+                  canDelete={canDelete}
+                  storyPriority={storyPriority}
+                  isReadOnly={isReadOnly}
+                />
+              );
+            })}
           </div>
-          {!isFinished && (
+          {!isFinished && !isReadOnly && (
             <button 
               onClick={() => onAddStory(epic.id)}
-              className="group p-10 border-[3px] border-dashed border-slate-200 dark:border-slate-800 rounded-[32px] flex flex-col items-center justify-center text-slate-400 hover:border-phase-po/50 hover:text-phase-po hover:bg-white dark:hover:bg-slate-900 transition-all duration-500 w-full"
+              className="group p-5 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center text-slate-400 hover:border-phase-po/50 hover:text-phase-po hover:bg-white dark:hover:bg-slate-900 transition-all duration-500 w-full"
             >
-              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-3xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <Plus size={32} />
+              <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                <Plus size={18} />
               </div>
-              <span className="text-[11px] font-black uppercase tracking-[0.3em]">Adicionar Nova História ao Épico</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.3em]">Adicionar Nova História ao Épico</span>
             </button>
           )}
         </div>
@@ -327,26 +330,40 @@ const EpicCard = ({ epic, stories, tasks, onAddStory, onEditStory, onMoveToSprin
 
 export default function ProductBacklog() {
   const { 
-    epics, userStories, sprints, tasks, user, confirmed_users, 
+    epics, userStories, sprints, tasks, user, confirmed_users, projects,
     addEpic, addUserStory, addTask, updateUserStory, assignEpicToSprint, 
     assignStoryToSprint, deleteStory, deleteEpic, deleteTask, reorderEpics, 
-    reorderStories, activeProjectId, addSprint 
+    reorderStories, activeProjectId, addSprint, addProject, archiveProject 
   } = useAgileStore();
+  
+  const activeProject = projects.find(p => p.id === activeProjectId);
+  const isProjectPaused = activeProject?.status === 'paused';
   
   const [isEpicModalOpen, setIsEpicModalOpen] = useState(false);
   const [isStoryModalOpen, setIsStoryModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isSprintModalOpen, setIsSprintModalOpen] = useState(false);
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [selectedEpicId, setSelectedEpicId] = useState(null);
   const [selectedStoryId, setSelectedStoryId] = useState(null);
   const [editingStory, setEditingStory] = useState(null);
   
+  const [newProjectData, setNewProjectData] = useState({ name: '', methodology: 'Scrum' });
   const [newSprint, setNewSprint] = useState({ goal: '', start_date: '', end_date: '' });
   const [newEpic, setNewEpic] = useState({ title: '', description: '' });
   const [newStory, setNewStory] = useState({ title: '', story_points: 1, estimated_hours: 0, due_date: '', assigned_to: '' });
   const [newTask, setNewTask] = useState({ title: '', estimated_hours: 0, assigned_to: '', story_points: 1, due_date: '' });
   const [searchQuery, setSearchQuery] = useState('');
+
+  const hasActiveSprint = sprints.some(s => s.status === 'active' && s.project_id === activeProjectId);
+
+  const handleCreateProject = (e) => {
+    e.preventDefault();
+    addProject(newProjectData);
+    setIsProjectModalOpen(false);
+    setNewProjectData({ name: '', methodology: 'Scrum' });
+  };
 
   const filteredEpics = epics
     .filter(e => e.project_id === activeProjectId)
@@ -358,6 +375,7 @@ export default function ProductBacklog() {
 
   const filteredStories = userStories.filter(s => s.project_id === activeProjectId);
   const activeSprint = sprints.find(s => s.status === 'active' && s.project_id === activeProjectId) || sprints.find(s => s.project_id === activeProjectId);
+
 
   const handleCreateEpic = (e) => {
     e.preventDefault();
@@ -432,18 +450,38 @@ export default function ProductBacklog() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               <div className="absolute right-0 bottom-2 text-slate-300 dark:text-slate-700 group-hover:text-phase-po transition-colors">
-                <Hash size={18} />
+                <Hash size={14} />
               </div>
             </div>
           </div>
         </div>
-        <button 
-          onClick={() => setIsEpicModalOpen(true)}
-          className="btn-primary bg-phase-po hover:bg-phase-po/90 flex items-center gap-3 px-8 py-4 shadow-xl shadow-phase-po/20"
-        >
-          <Plus size={24} />
-          Novo Épico
-        </button>
+        <div className="flex items-center gap-3 self-end">
+          <button 
+            onClick={() => setIsProjectModalOpen(true)}
+            className="btn-primary bg-slate-800 hover:bg-slate-900 text-white flex items-center gap-2.5 px-4.5 py-2.5 rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 border-none cursor-pointer"
+          >
+            <Plus size={16} />
+            Novo Produto
+          </button>
+          {!hasActiveSprint && !isProjectPaused && (
+            <button 
+              onClick={() => setIsSprintModalOpen(true)}
+              className="btn-primary bg-brand-primary hover:bg-brand-primary/95 text-white flex items-center gap-2.5 px-4.5 py-2.5 rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 border-none cursor-pointer"
+            >
+              <Rocket size={16} />
+              Ativar Sprint
+            </button>
+          )}
+          {!isProjectPaused && (
+            <button 
+              onClick={() => setIsEpicModalOpen(true)}
+              className="btn-primary bg-phase-po hover:bg-phase-po/90 flex items-center gap-2.5 px-4.5 py-2.5 rounded-xl shadow-lg shadow-phase-po/20 transition-all hover:scale-105 active:scale-95 border-none cursor-pointer"
+            >
+              <Plus size={16} />
+              Novo Épico
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-8">
@@ -481,7 +519,8 @@ export default function ProductBacklog() {
             onReorder={reorderEpics}
             onReorderStories={reorderStories}
             onAddStoryToStory={(id) => { setSelectedStoryId(id); setIsTaskModalOpen(true); }}
-            canDelete={user?.role === 'Gestor' || user?.role === 'Product Owner' || user?.role === 'Gerente'}
+            canDelete={(user?.role === 'Gestor' || user?.role === 'Product Owner' || user?.role === 'Gerente') && !isProjectPaused}
+            isReadOnly={isProjectPaused}
           />
         ))}
 
@@ -508,6 +547,7 @@ export default function ProductBacklog() {
                   onReorder={() => {}}
                   onReorderStories={() => {}}
                   canDelete={false}
+                  isReadOnly={isProjectPaused}
                 />
               ))}
             </div>
@@ -739,6 +779,23 @@ export default function ProductBacklog() {
             </div>
           </div>
           <button type="submit" className="btn-primary bg-brand-primary w-full mt-4 border-none">Ativar Sprint Agora 🚀</button>
+        </form>
+      </Modal>
+
+      {/* New Project/Product Modal */}
+      <Modal isOpen={isProjectModalOpen} onClose={() => setIsProjectModalOpen(false)} title="Criar Novo Produto">
+        <form onSubmit={handleCreateProject} className="flex flex-col gap-6">
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-black text-slate-500 uppercase tracking-widest">Nome do Produto</label>
+            <input 
+              required 
+              className="input-field dark:bg-slate-900 dark:border-slate-800 dark:text-white" 
+              placeholder="Ex: Agile Sphere Engine" 
+              value={newProjectData.name}
+              onChange={(e) => setNewProjectData({ ...newProjectData, name: e.target.value })}
+            />
+          </div>
+          <button type="submit" className="btn-primary w-full mt-4 bg-slate-800 hover:bg-slate-900 border-none">Inicializar Produto</button>
         </form>
       </Modal>
     </div>

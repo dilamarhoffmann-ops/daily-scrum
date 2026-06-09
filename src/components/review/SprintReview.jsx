@@ -3,7 +3,9 @@ import { Search, CheckCircle2, MessageSquare, Plus, ArrowRight, ExternalLink, Tr
 import useAgileStore from '../../store/useAgileStore';
 
 export default function SprintReview() {
-  const { userStories, tasks, review_items, addReviewItem, deleteReviewItem, rejectTask, activeProjectId } = useAgileStore();
+  const { userStories, tasks, review_items, addReviewItem, deleteReviewItem, rejectTask, activeProjectId, projects } = useAgileStore();
+  const activeProject = projects.find(p => p.id === activeProjectId);
+  const isProjectPaused = activeProject?.status === 'paused';
   const [newFeedback, setNewFeedback] = React.useState({ content: '', type: 'improvement', story_id: '', task_id: '' });
   const [rejectingId, setRejectingId] = React.useState(null);
   const [justification, setJustification] = React.useState('');
@@ -36,10 +38,6 @@ export default function SprintReview() {
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Sprint Review</h2>
           <p className="text-slate-500 dark:text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Inspeção do Incremento do Produto</p>
-        </div>
-        <div className="flex items-center gap-3 bg-white dark:bg-slate-900 px-6 py-3 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm self-start transition-all">
-           <Search className="text-phase-st-review" size={24} />
-           <span className="text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-tighter">Demonstração Ativa</span>
         </div>
       </div>
 
@@ -82,10 +80,10 @@ export default function SprintReview() {
                                <div className="w-2.5 h-2.5 rounded-full bg-brand-success shadow-[0_0_8px_rgba(16,185,129,0.3)]" />
                                {task.title}
                             </div>
-                            {rejectingId !== task.id && (
+                            {rejectingId !== task.id && !isProjectPaused && (
                               <button 
                                 onClick={() => { setRejectingId(task.id); setJustification(''); }}
-                                className="p-1 px-2.5 rounded-lg border border-slate-100 dark:border-slate-800 text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest hover:border-brand-danger/50 hover:text-brand-danger transition-all opacity-0 group-hover/task:opacity-100"
+                                className="p-1 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest hover:border-brand-danger/50 hover:text-brand-danger hover:bg-brand-danger/5 transition-all shadow-sm"
                                 title="Reprovar Tarefa"
                               >
                                 <RotateCcw size={10} className="inline mr-1" />
@@ -162,70 +160,72 @@ export default function SprintReview() {
               </div>
 
               <form onSubmit={handleAddFeedback} className="flex flex-col gap-6">
-                <div className="flex gap-2 p-1.5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800 transition-colors">
-                  {['improvement', 'compliment', 'change_request'].map(type => (
-                    <button 
-                      key={type}
-                      type="button"
-                      onClick={() => setNewFeedback({...newFeedback, type})}
-                      className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all ${newFeedback.type === type ? 'bg-white dark:bg-slate-800 text-phase-st-review dark:text-white shadow-lg shadow-phase-st-review/10' : 'text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400'}`}
-                    >
-                      {type === 'improvement' ? 'Melhoria' : type === 'compliment' ? 'Elogio' : 'Alteração'}
-                    </button>
-                  ))}
-                </div>
+                <fieldset disabled={isProjectPaused} className="flex flex-col gap-6 w-full p-0 m-0 border-0 disabled:opacity-60">
+                  <div className="flex gap-2 p-1.5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800 transition-colors">
+                    {['improvement', 'compliment', 'change_request'].map(type => (
+                      <button 
+                        key={type}
+                        type="button"
+                        onClick={() => setNewFeedback({...newFeedback, type})}
+                        className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all ${newFeedback.type === type ? 'bg-white dark:bg-slate-800 text-phase-st-review dark:text-white shadow-lg shadow-phase-st-review/10' : 'text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400'}`}
+                      >
+                        {type === 'improvement' ? 'Melhoria' : type === 'compliment' ? 'Elogio' : 'Alteração'}
+                      </button>
+                    ))}
+                  </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-2.5">
-                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">História (US)</label>
-                    <div className="relative">
-                        <select 
-                          value={newFeedback.story_id}
-                          onChange={e => setNewFeedback({...newFeedback, story_id: e.target.value, task_id: ''})}
-                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl px-5 py-4 text-[11px] font-black text-slate-800 dark:text-slate-200 outline-none focus:border-phase-st-review appearance-none cursor-pointer transition-all hover:bg-white dark:hover:bg-black"
-                        >
-                          <option value="">Geral (Sprint Scope)</option>
-                          {doneStories.map(s => (
-                            <option key={s.id} value={s.id}>{s.title}</option>
-                          ))}
-                        </select>
-                        <ArrowRight size={14} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-700 pointer-events-none rotate-90" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-2.5">
+                      <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">História (US)</label>
+                      <div className="relative">
+                          <select 
+                            value={newFeedback.story_id}
+                            onChange={e => setNewFeedback({...newFeedback, story_id: e.target.value, task_id: ''})}
+                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl px-5 py-4 text-[11px] font-black text-slate-800 dark:text-slate-200 outline-none focus:border-phase-st-review appearance-none cursor-pointer transition-all hover:bg-white dark:hover:bg-black disabled:cursor-not-allowed"
+                          >
+                            <option value="">Geral (Sprint Scope)</option>
+                            {doneStories.map(s => (
+                              <option key={s.id} value={s.id}>{s.title}</option>
+                            ))}
+                          </select>
+                          <ArrowRight size={14} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-700 pointer-events-none rotate-90" />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2.5">
+                      <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">Tarefa Relacionada</label>
+                      <div className="relative">
+                          <select 
+                            disabled={!newFeedback.story_id || isProjectPaused}
+                            value={newFeedback.task_id}
+                            onChange={e => setNewFeedback({...newFeedback, task_id: e.target.value})}
+                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl px-5 py-4 text-[11px] font-black text-slate-800 dark:text-slate-200 outline-none focus:border-phase-st-review appearance-none cursor-pointer disabled:opacity-30 transition-all hover:enabled:bg-white dark:hover:enabled:bg-black disabled:cursor-not-allowed"
+                          >
+                            <option value="">Nenhuma tarefa específica</option>
+                            {availableTasks.map(t => (
+                              <option key={t.id} value={t.id}>{t.title}</option>
+                            ))}
+                          </select>
+                          <ArrowRight size={14} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-700 pointer-events-none rotate-90" />
+                      </div>
                     </div>
                   </div>
 
                   <div className="flex flex-col gap-2.5">
-                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">Tarefa Relacionada</label>
-                    <div className="relative">
-                        <select 
-                          disabled={!newFeedback.story_id}
-                          value={newFeedback.task_id}
-                          onChange={e => setNewFeedback({...newFeedback, task_id: e.target.value})}
-                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl px-5 py-4 text-[11px] font-black text-slate-800 dark:text-slate-200 outline-none focus:border-phase-st-review appearance-none cursor-pointer disabled:opacity-30 transition-all hover:enabled:bg-white dark:hover:enabled:bg-black"
-                        >
-                          <option value="">Nenhuma tarefa específica</option>
-                          {availableTasks.map(t => (
-                            <option key={t.id} value={t.id}>{t.title}</option>
-                          ))}
-                        </select>
-                        <ArrowRight size={14} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-700 pointer-events-none rotate-90" />
-                    </div>
+                     <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">Detalhamento do Feedback</label>
+                     <textarea 
+                       value={newFeedback.content}
+                       onChange={e => setNewFeedback({...newFeedback, content: e.target.value})}
+                       placeholder="Qual o insight estratégico do stakeholder sobre este incremento?"
+                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-[24px] p-5 text-sm font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-phase-st-review min-h-[140px] placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner resize-none transition-all disabled:cursor-not-allowed"
+                     />
                   </div>
-                </div>
 
-                <div className="flex flex-col gap-2.5">
-                   <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">Detalhamento do Feedback</label>
-                   <textarea 
-                     value={newFeedback.content}
-                     onChange={e => setNewFeedback({...newFeedback, content: e.target.value})}
-                     placeholder="Qual o insight estratégico do stakeholder sobre este incremento?"
-                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-[24px] p-5 text-sm font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-phase-st-review min-h-[140px] placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner resize-none transition-all"
-                   />
-                </div>
-
-                <button type="submit" className="w-full bg-phase-st-review hover:bg-phase-st-review/90 text-white py-5 rounded-[24px] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-phase-st-review/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3">
-                   <Plus size={20} />
-                   Adicionar Insight à Review
-                </button>
+                  <button type="submit" className="w-full bg-phase-st-review hover:bg-phase-st-review/90 text-white py-5 rounded-[24px] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-phase-st-review/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:cursor-not-allowed">
+                     <Plus size={20} />
+                     Adicionar Insight à Review
+                  </button>
+                </fieldset>
               </form>
            </div>
 
@@ -254,9 +254,11 @@ export default function SprintReview() {
                           )}
                        </div>
                     </div>
-                    <button onClick={() => deleteReviewItem(item.id)} className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-300 dark:text-slate-700 hover:text-brand-danger hover:bg-brand-danger/10 rounded-2xl transition-all opacity-0 group-hover:opacity-100">
-                      <Trash2 size={18} />
-                    </button>
+                     {!isProjectPaused && (
+                       <button onClick={() => deleteReviewItem(item.id)} className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-300 dark:text-slate-700 hover:text-brand-danger hover:bg-brand-danger/10 rounded-2xl transition-all opacity-0 group-hover:opacity-100">
+                         <Trash2 size={18} />
+                       </button>
+                     )}
                  </div>
 
                  <p className="text-base font-bold text-slate-700 dark:text-slate-300 leading-relaxed italic pr-4">"{item.content}"</p>

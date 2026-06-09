@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, Shield, Settings, Database, CheckCircle2, XCircle, UserPlus, Clock, Plus, Calendar } from 'lucide-react';
+import { Users, Shield, Settings, Database, CheckCircle2, XCircle, UserPlus, Clock, Plus, Calendar, Trash2, Edit3, Check } from 'lucide-react';
 import useAgileStore from '../../store/useAgileStore';
 import Modal from '../common/Modal';
 import { getWorkingDays } from '../../lib/agileUtils';
@@ -26,13 +26,19 @@ export default function SettingsView() {
     updateUser,
     deleteUser,
     addSprint,
-    updateSprint
+    updateSprint,
+    dod_items,
+    updateDefinitionOfDone
   } = useAgileStore();
   
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
   const [isDeleteConfirmModalOpen, setIsDeleteConfirmModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [deletingUserId, setDeletingUserId] = useState(null);
+  
+  const [newDodItem, setNewDodItem] = useState('');
+  const [editingDodIndex, setEditingDodIndex] = useState(null);
+  const [editingDodText, setEditingDodText] = useState('');
 
   const canManageUsers = currentUser?.role === 'Gestor' || currentUser?.role === 'Gerente';
   const canEditUser = (userId) => canManageUsers || currentUser?.id === userId;
@@ -87,6 +93,12 @@ export default function SettingsView() {
              className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'project' ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' : 'bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border border-slate-100 dark:border-slate-800'}`}
            >
              Projeto
+           </button>
+           <button 
+             onClick={() => setActiveSubTab('dod')}
+             className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'dod' ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' : 'bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border border-slate-100 dark:border-slate-800'}`}
+           >
+             Definição de Pronto (DoD)
            </button>
         </div>
       </div>
@@ -640,6 +652,136 @@ export default function SettingsView() {
           </div>
         </div>
       </Modal>
+
+      {activeSubTab === 'dod' && (
+        <div className="bg-white dark:bg-slate-900 rounded-[40px] p-10 border-2 border-slate-100 dark:border-slate-800 flex flex-col gap-8 shadow-sm transition-colors">
+          <div className="flex items-center gap-4 border-b-2 border-slate-50 dark:border-slate-800 pb-6">
+            <div className="p-3 bg-brand-success/10 rounded-2xl text-brand-success">
+              <CheckCircle2 size={28} />
+            </div>
+            <div>
+              <h3 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tighter leading-none">Definição de Pronto (DoD)</h3>
+              <p className="text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest mt-2">Checklist obrigatório para mover qualquer tarefa para Concluído (Done)</p>
+            </div>
+          </div>
+
+          {/* Adicionar Novo Item */}
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!newDodItem.trim()) return;
+              const updated = [...(dod_items || []), newDodItem.trim()];
+              updateDefinitionOfDone(updated);
+              setNewDodItem('');
+            }}
+            className="flex gap-4"
+          >
+            <input 
+              type="text" 
+              required
+              className="flex-1 input-field dark:bg-slate-900 dark:border-slate-800 dark:text-white"
+              placeholder="Ex: Testes unitários cobrindo 80% do novo código..."
+              value={newDodItem}
+              onChange={(e) => setNewDodItem(e.target.value)}
+            />
+            <button 
+              type="submit" 
+              className="btn-primary bg-brand-success text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-brand-success/20 border-none shrink-0"
+            >
+              <Plus size={14} className="inline mr-1.5" /> Adicionar Item
+            </button>
+          </form>
+
+          {/* Lista de Itens */}
+          <div className="flex flex-col gap-4">
+            {(dod_items || []).map((item, index) => (
+              <div 
+                key={index} 
+                className="p-5 rounded-[24px] border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 flex items-center justify-between group/item hover:border-brand-primary/20 transition-all"
+              >
+                <div className="flex-1 pr-6 flex items-center gap-4">
+                  <div className="w-8 h-8 rounded-lg bg-brand-success/10 flex items-center justify-center text-brand-success shrink-0">
+                    <Check size={16} strokeWidth={3} />
+                  </div>
+                  {editingDodIndex === index ? (
+                    <input 
+                      type="text"
+                      className="flex-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-brand-primary"
+                      value={editingDodText}
+                      onChange={(e) => setEditingDodText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          if (editingDodText.trim()) {
+                            const updated = [...(dod_items || [])];
+                            updated[index] = editingDodText.trim();
+                            updateDefinitionOfDone(updated);
+                          }
+                          setEditingDodIndex(null);
+                        } else if (e.key === 'Escape') {
+                          setEditingDodIndex(null);
+                        }
+                      }}
+                      autoFocus
+                    />
+                  ) : (
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tight leading-snug">{item}</p>
+                  )}
+                </div>
+                
+                <div className="flex items-center gap-2 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                  {editingDodIndex === index ? (
+                    <button 
+                      onClick={() => {
+                        if (editingDodText.trim()) {
+                          const updated = [...(dod_items || [])];
+                          updated[index] = editingDodText.trim();
+                          updateDefinitionOfDone(updated);
+                        }
+                        setEditingDodIndex(null);
+                      }}
+                      className="p-2 text-brand-success hover:bg-brand-success/5 rounded-xl transition-all"
+                      title="Confirmar"
+                    >
+                      <Check size={16} strokeWidth={3} />
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => {
+                        setEditingDodIndex(index);
+                        setEditingDodText(item);
+                      }}
+                      className="p-2 text-slate-400 hover:text-brand-primary hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+                      title="Editar"
+                    >
+                      <Edit3 size={16} />
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => {
+                      if (confirm(`Remover "${item}" da Definição de Pronto?`)) {
+                        const updated = (dod_items || []).filter((_, idx) => idx !== index);
+                        updateDefinitionOfDone(updated);
+                      }
+                    }}
+                    className="p-2 text-slate-400 hover:text-brand-danger hover:bg-brand-danger/5 rounded-xl transition-all"
+                    title="Remover"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {(dod_items || []).length === 0 && (
+              <div className="text-center py-10 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-3xl text-slate-400">
+                <CheckCircle2 size={32} className="mx-auto mb-2 opacity-50" />
+                <p className="text-xs font-bold uppercase tracking-widest">Nenhum item configurado</p>
+                <p className="text-[10px] text-slate-400 mt-1 italic">As tarefas serão concluídas sem checklists de confirmação.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { RotateCcw, Plus, Trash2, Heart, Ban, PlayCircle, Star } from 'lucide-react';
+import { Plus, Trash2, Heart, Ban, PlayCircle, Star } from 'lucide-react';
 import useAgileStore from '../../store/useAgileStore';
 
-const RetroCard = ({ item, onDelete }) => {
+const RetroCard = ({ item, onDelete, isReadOnly }) => {
   const getIcon = () => {
     switch (item.category) {
       case 'keep': return <Heart className="text-brand-success" size={18} />;
@@ -27,12 +27,14 @@ const RetroCard = ({ item, onDelete }) => {
         <div className="shrink-0 mt-1">{getIcon()}</div>
         <p className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-relaxed">{item.content}</p>
       </div>
-      <button 
-        onClick={() => onDelete(item.id)}
-        className="absolute top-4 right-4 p-2 text-slate-300 dark:text-slate-700 hover:text-brand-danger opacity-0 group-hover:opacity-100 transition-all"
-      >
-        <Trash2 size={16} />
-      </button>
+      {!isReadOnly && (
+        <button 
+          onClick={() => onDelete(item.id)}
+          className="absolute top-4 right-4 p-2 text-slate-300 dark:text-slate-700 hover:text-brand-danger opacity-0 group-hover:opacity-100 transition-all"
+        >
+          <Trash2 size={16} />
+        </button>
+      )}
     </div>
   );
 };
@@ -40,6 +42,7 @@ const RetroCard = ({ item, onDelete }) => {
 export default function SprintRetrospective() {
   const { retro_items, addRetroItem, deleteRetroItem, activeProjectId, archiveProject, projects, user } = useAgileStore();
   const activeProject = projects.find(p => p.id === activeProjectId);
+  const isProjectPaused = activeProject?.status === 'paused';
   const filteredRetro = retro_items.filter(item => item.project_id === activeProjectId);
   const [newItem, setNewItem] = useState({ content: '', category: 'keep' });
 
@@ -71,14 +74,10 @@ export default function SprintRetrospective() {
           <p className="text-slate-500 dark:text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Melhorias Contínuas para a Próxima Sprint</p>
         </div>
         <div className="flex items-center gap-4 self-start">
-          <div className="flex items-center gap-3 bg-white dark:bg-slate-900 px-6 py-3 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
-             <RotateCcw className="text-phase-st-retro" size={24} />
-             <span className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tighter italic">KSS Protocol</span>
-          </div>
           {activeProject?.status === 'active' && (user?.role === 'Gestor' || user?.role === 'Product Owner') && (
             <button 
               onClick={handleArchive}
-              className="bg-brand-danger/10 text-brand-danger hover:bg-brand-danger hover:text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 border-brand-danger/20"
+              className="bg-brand-danger/10 text-brand-danger hover:bg-brand-danger hover:text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border-2 border-brand-danger/20"
             >
               Finalizar e Arquivar Projeto
             </button>
@@ -89,24 +88,26 @@ export default function SprintRetrospective() {
       {/* Input Section */}
       <div className="glass-card p-8 transition-all">
         <form onSubmit={handleCreate} className="flex gap-4">
-          <select 
-            className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl px-6 py-2 text-xs font-black uppercase tracking-widest outline-none focus:border-phase-st-retro transition-all cursor-pointer text-slate-900 dark:text-white"
-            value={newItem.category}
-            onChange={e => setNewItem({...newItem, category: e.target.value})}
-          >
-            <option value="keep">😊 O que fizemos bem?</option>
-            <option value="stop">🛑 O que não repetir?</option>
-            <option value="start">💡 O que podemos melhorar?</option>
-          </select>
-          <input 
-            className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-phase-st-retro transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700"
-            placeholder="Compartilhe seu insight com o time..."
-            value={newItem.content}
-            onChange={e => setNewItem({...newItem, content: e.target.value})}
-          />
-          <button type="submit" className="btn-primary px-6 bg-slate-900 dark:bg-white dark:text-slate-900 border-none">
-            Adicionar
-          </button>
+          <fieldset disabled={isProjectPaused} className="flex gap-4 w-full p-0 m-0 border-0 disabled:opacity-60">
+            <select 
+              className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest outline-none focus:border-phase-st-retro transition-all cursor-pointer text-slate-900 dark:text-white disabled:cursor-not-allowed"
+              value={newItem.category}
+              onChange={e => setNewItem({...newItem, category: e.target.value})}
+            >
+              <option value="keep">😊 O que fizemos bem?</option>
+              <option value="stop">🛑 O que não repetir?</option>
+              <option value="start">💡 O que podemos melhorar?</option>
+            </select>
+            <input 
+              className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-phase-st-retro transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 disabled:cursor-not-allowed"
+              placeholder="Compartilhe seu insight com o time..."
+              value={newItem.content}
+              onChange={e => setNewItem({...newItem, content: e.target.value})}
+            />
+            <button type="submit" className="btn-primary px-6 bg-slate-900 dark:bg-white dark:text-slate-900 border-none disabled:cursor-not-allowed">
+              Adicionar
+            </button>
+          </fieldset>
         </form>
       </div>
 
@@ -120,10 +121,10 @@ export default function SprintRetrospective() {
             
             <div className="flex flex-col gap-4">
               {filteredRetro.filter(item => item.category === cat.id).map(item => (
-                <RetroCard key={item.id} item={item} onDelete={deleteRetroItem} />
+                <RetroCard key={item.id} item={item} onDelete={deleteRetroItem} isReadOnly={isProjectPaused} />
               ))}
               {filteredRetro.filter(item => item.category === cat.id).length === 0 && (
-                <div className="p-8 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-3xl flex items-center justify-center opacity-30 dark:opacity-20 italic text-xs font-bold text-slate-400 dark:text-slate-600">
+                <div className="p-5 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl flex items-center justify-center opacity-30 dark:opacity-20 italic text-xs font-bold text-slate-400 dark:text-slate-600">
                    Aguardando colaboração...
                 </div>
               )}

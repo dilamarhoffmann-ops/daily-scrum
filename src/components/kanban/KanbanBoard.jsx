@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Plus, MoreHorizontal, AlertCircle, CheckCircle2, Clock, Calendar, ArrowRight, Check, User, Flag, RotateCcw, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, MoreHorizontal, AlertCircle, CheckCircle2, Clock, Calendar, ArrowRight, Check, User, Flag, RotateCcw, ChevronUp, ChevronDown, Pause, Play } from 'lucide-react';
 import useAgileStore from '../../store/useAgileStore';
 import Modal from '../common/Modal';
 
-const KanbanColumn = ({ title, status, tasks, stories, onEditTask, onAddTask, onDropTask, onToggleBlock, onReturnToBacklog, onReorder }) => {
+const KanbanColumn = ({ title, status, tasks, stories, onEditTask, onAddTask, onDropTask, onToggleBlock, onReturnToBacklog, onReorder, isReadOnly }) => {
   const getStatusColorConfig = (status) => {
     switch (status) {
       case 'todo': return { bg: 'bg-[#2563eb]', text: 'text-white' };
@@ -28,34 +28,37 @@ const KanbanColumn = ({ title, status, tasks, stories, onEditTask, onAddTask, on
 
   const handleDrop = (e) => {
     e.preventDefault();
+    if (isReadOnly) return;
     handleDragLeave(e);
     const taskId = e.dataTransfer.getData('taskId');
     onDropTask(taskId, status);
   };
 
   return (
-    <div className="flex flex-col gap-0 min-w-[320px] flex-1 bg-[#f8fafc] rounded-2xl border border-transparent shadow-sm transition-all duration-300 overflow-hidden">
-      <div className={`column-header ${colorConfig.bg} ${colorConfig.text} rounded-t-2xl font-bold flex items-center justify-between px-6 py-4 shadow-sm`}>
+    <div className="flex flex-col gap-0 min-w-[180px] md:min-w-[200px] lg:min-w-[220px] xl:min-w-[240px] flex-1 bg-[#f8fafc] rounded-2xl border border-transparent shadow-sm transition-all duration-300 overflow-hidden">
+      <div className={`column-header ${colorConfig.bg} ${colorConfig.text} rounded-t-2xl font-bold flex items-center justify-between px-4 py-3.5 shadow-sm`}>
         <div className="flex items-center gap-2">
-          <span className="text-sm">({tasks.length})</span>
-          <span className="text-sm tracking-wide uppercase">{title}</span>
+          <span className="text-xs">({tasks.length})</span>
+          <span className="text-xs font-black tracking-widest uppercase">{title}</span>
         </div>
-        <button onClick={() => onAddTask(status)} className="p-1 rounded-full hover:bg-black/10 transition-colors">
-          <Plus size={16} />
-        </button>
+        {!isReadOnly && (
+          <button onClick={() => onAddTask(status)} className="p-1 rounded-full hover:bg-black/10 transition-colors">
+            <Plus size={14} />
+          </button>
+        )}
       </div>
 
       <div 
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className="flex flex-col gap-6 min-h-[650px] p-6 border-x border-slate-200/50 dark:border-white/5 relative transition-all"
+        className="flex flex-col gap-4 min-h-[650px] p-4 border-x border-slate-200/50 dark:border-white/5 relative transition-all"
       >
-        <div className="relative z-10 flex flex-col gap-5 items-stretch">
+        <div className="relative z-10 flex flex-col gap-4 items-stretch">
           {tasks.map((task, index) => (
             <div key={task.id} className="flex gap-3 items-center group/card">
               {/* Botões de Ordenação Lateral (Apenas no To Do) */}
-              {status === 'todo' && (
+              {status === 'todo' && !isReadOnly && (
                 <div className="flex flex-col items-center bg-slate-800 dark:bg-brand-primary p-1 rounded-xl shadow-lg opacity-0 group-hover/card:opacity-100 transition-all scale-90">
                   <button 
                     onClick={(e) => { e.stopPropagation(); onReorder(task.id, 'up'); }}
@@ -76,8 +79,9 @@ const KanbanColumn = ({ title, status, tasks, stories, onEditTask, onAddTask, on
               )}
 
               <div 
-                draggable
+                draggable={!isReadOnly && !task.is_paused}
                 onDragStart={(e) => {
+                  if (isReadOnly || task.is_paused) return;
                   e.dataTransfer.setData('taskId', task.id);
                   e.currentTarget.style.opacity = '0.4';
                 }}
@@ -92,14 +96,16 @@ const KanbanColumn = ({ title, status, tasks, stories, onEditTask, onAddTask, on
                 className={`group relative cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex-1 bg-white border border-slate-100 rounded-xl shadow-sm min-h-[160px] p-5 flex flex-col justify-between overflow-hidden
                   ${task.is_blocked 
                     ? 'border-[#8B0000]/50 ring-2 ring-[#8B0000]/10' 
+                    : task.is_paused
+                    ? 'border-amber-400 ring-2 ring-amber-400/10 bg-amber-50/[0.02]'
                     : ''
                   }
                 `} 
               >
                 {/* Accent Bar matching column color */}
                 <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${colorConfig.bg}`} />
-                <div className={`badge-harmony absolute top-4 right-4 ${task.is_blocked ? 'badge-harmony-danger' : 'badge-harmony-neutral'} border-2`}>
-                  {task.is_blocked ? <Flag size={10} /> : `${task.estimated_hours}h`}
+                <div className={`badge-harmony absolute top-4 right-4 ${task.is_blocked ? 'badge-harmony-danger' : task.is_paused ? 'badge-harmony-warning border-amber-400 bg-amber-50 text-amber-600' : 'badge-harmony-neutral'} border-2`}>
+                  {task.is_blocked ? <Flag size={10} /> : task.is_paused ? <Pause size={10} fill="currentColor" /> : `${task.estimated_hours}h`}
                 </div>
                 {task.story_points > 0 && (
                   <div className="absolute top-4 left-4 badge-harmony badge-harmony-primary border-2">
@@ -110,13 +116,21 @@ const KanbanColumn = ({ title, status, tasks, stories, onEditTask, onAddTask, on
                   {/* Story Context */}
                   {task.story_id && (() => {
                     const story = stories.find(s => s.id === task.story_id);
+                    const storyPriority = stories.findIndex(s => s.id === task.story_id) + 1;
                     return (
                       <div className="mb-3 p-2.5 bg-brand-primary/[0.03] dark:bg-brand-primary/[0.05] rounded-xl border border-brand-primary/10 flex flex-col gap-1.5 transition-all group-hover:bg-brand-primary/[0.06]">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-brand-primary shadow-[0_0_8px_rgba(79,70,229,0.4)]" />
-                          <p className="text-[9px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-tighter truncate">
-                            US: {story?.title || 'Geral'}
-                          </p>
+                        <div className="flex items-center justify-between gap-1.5">
+                          <div className="flex items-center gap-1.5 overflow-hidden">
+                            <div className="w-1.5 h-1.5 rounded-full bg-brand-primary shadow-[0_0_8px_rgba(79,70,229,0.4)] flex-shrink-0" />
+                            <p className="text-[9px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-tighter truncate">
+                              US: {story?.title || 'Geral'}
+                            </p>
+                          </div>
+                          {storyPriority > 0 && (
+                            <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded bg-amber-500 text-white shadow-sm border border-amber-600 uppercase">
+                              Prio {storyPriority}
+                            </span>
+                          )}
                         </div>
                         {(story?.assigned_to || story?.due_date) && (
                           <div className="flex items-center gap-3 ml-3 overflow-hidden">
@@ -136,6 +150,14 @@ const KanbanColumn = ({ title, status, tasks, stories, onEditTask, onAddTask, on
                     );
                   })()}
                   <p className="text-slate-800 text-sm font-semibold leading-snug">{task.title}</p>
+                  {task.is_paused && (
+                    <div className="mt-2.5 p-2.5 bg-amber-50/70 dark:bg-amber-950/20 text-amber-800 dark:text-amber-500 rounded-xl border border-amber-200/50 text-[10px] font-bold leading-relaxed">
+                      <div className="flex items-center gap-1 mb-1 text-amber-700 dark:text-amber-400 uppercase tracking-wider text-[8px] font-black">
+                        <Pause size={8} fill="currentColor" /> Tarefa Pausada
+                      </div>
+                      "{task.paused_reason || 'Sem motivo informado'}"
+                    </div>
+                  )}
                   {(() => {
                       const story = stories.find(s => s.id === task.story_id);
                       const deadline = task.due_date || story?.due_date;
@@ -152,20 +174,24 @@ const KanbanColumn = ({ title, status, tasks, stories, onEditTask, onAddTask, on
                   <div className="flex justify-between items-center text-[9px] font-bold text-slate-500 dark:text-slate-500 uppercase tracking-widest">
                     <span className="opacity-40">TASK-{task.id.slice(0, 4)}</span>
                     <div className="flex items-center gap-2">
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); onToggleBlock(task.id); }}
-                        className={`p-1 rounded transition-all ${task.is_blocked ? 'text-brand-danger bg-brand-danger/10' : 'text-slate-300 dark:text-slate-700 hover:text-brand-danger'}`}
-                        title="Marcar Impedimento"
-                      >
-                        <AlertCircle size={12} />
-                      </button>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); onReturnToBacklog(task); }}
-                        className="p-1 rounded text-slate-300 dark:text-slate-700 hover:text-brand-primary transition-all"
-                        title="Voltar para Backlog"
-                      >
-                        <RotateCcw size={12} />
-                      </button>
+                      {!isReadOnly && (
+                        <>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); onToggleBlock(task.id); }}
+                            className={`p-1 rounded transition-all ${task.is_blocked ? 'text-brand-danger bg-brand-danger/10' : 'text-slate-300 dark:text-slate-700 hover:text-brand-danger'}`}
+                            title="Marcar Impedimento"
+                          >
+                            <AlertCircle size={12} />
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); onReturnToBacklog(task); }}
+                            className="p-1 rounded text-slate-300 dark:text-slate-700 hover:text-brand-primary transition-all"
+                            title="Voltar para Backlog"
+                          >
+                            <RotateCcw size={12} />
+                          </button>
+                        </>
+                      )}
                       <div className="flex items-center gap-2 text-slate-600">
                         <span className="truncate max-w-[80px] text-xs font-medium">{task.assigned_to || stories.find(s => s.id === task.story_id)?.assigned_to || 'Sem Dono'}</span>
                         <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold ${colorConfig.bg}`}>
@@ -186,11 +212,14 @@ const KanbanColumn = ({ title, status, tasks, stories, onEditTask, onAddTask, on
 };
 
 export default function KanbanBoard() {
-  const { tasks, userStories, confirmed_users, user, addTask, updateTask, updateTaskStatus, toggleTaskBlock, activeProjectId, returnStoryToBacklog, reorderTasks } = useAgileStore();
+  const { tasks, userStories, confirmed_users, user, projects, addTask, updateTask, updateTaskStatus, toggleTaskBlock, activeProjectId, pauseProject, returnStoryToBacklog, reorderTasks, sprints, dod_items } = useAgileStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDodOpen, setIsDodOpen] = useState(false);
+  const [checkedDodItems, setCheckedDodItems] = useState({});
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+  const [isPauseModalOpen, setIsPauseModalOpen] = useState(false);
+  const [pauseJustification, setPauseJustification] = useState('');
   const [selectedTask, setSelectedTask] = useState(null);
   const [targetStatus, setTargetStatus] = useState('todo');
   const [newTask, setNewTask] = useState({ title: '', estimated_hours: 0, actual_hours: 0, assigned_to: '', story_id: '', story_points: 1, due_date: '' });
@@ -198,10 +227,26 @@ export default function KanbanBoard() {
   const [justification, setJustification] = useState('');
   const [blockingAlert, setBlockingAlert] = useState(null);
 
-  const storiesInSprint = (userStories || []).filter(s => s && s.project_id === activeProjectId && s.sprint_id);
+  const activeProject = projects.find(p => p.id === activeProjectId);
+  const isProjectPaused = activeProject?.status === 'paused';
+  const canPause = user?.role === 'Gestor' || user?.role === 'Product Owner' || user?.role === 'Gerente' || user?.role === 'Administrador' || user?.role === 'Admin';
+
+  const activeSprint = sprints.find(s => s.status === 'active' && s.project_id === activeProjectId) || sprints.find(s => s.project_id === activeProjectId);
+
+  const storiesInSprint = (userStories || []).filter(s => s && s.project_id === activeProjectId && s.sprint_id === activeSprint?.id);
+  const sortedStories = [...(userStories || [])]
+    .filter(s => s && s.project_id === activeProjectId)
+    .sort((a, b) => {
+      if ((a.priority_order || 0) !== (b.priority_order || 0)) {
+        return (a.priority_order || 0) - (b.priority_order || 0);
+      }
+      return a.id.localeCompare(b.id);
+    });
+
   const filteredTasks = (tasks || [])
     .filter(t => 
       t && t.project_id === activeProjectId && 
+      (t.in_sprint_backlog !== undefined ? t.in_sprint_backlog === true : true) &&
       storiesInSprint.some(s => s && s.id === t.story_id)
     )
     .sort((a, b) => (a.priority_order || 0) - (b.priority_order || 0));
@@ -220,6 +265,14 @@ export default function KanbanBoard() {
     const task = tasks.find(t => t.id === taskId);
     if (!task || task.status === newStatus) return;
 
+    if (task.is_paused) {
+      setBlockingAlert({
+        title: "Tarefa Pausada",
+        message: `A tarefa "${task.title}" está pausada e não pode ser movimentada no quadro.`
+      });
+      return;
+    }
+
     // Regra: Toda tarefa precisa de um responsável para mudar de status no Sprint Backlog
     if (!task.assigned_to) {
       setBlockingAlert({
@@ -230,8 +283,13 @@ export default function KanbanBoard() {
     }
 
     if (newStatus === 'done') {
-      setSelectedTask(task);
-      setIsDodOpen(true);
+      if (!dod_items || dod_items.length === 0) {
+        updateTaskStatus(taskId, newStatus);
+      } else {
+        setSelectedTask(task);
+        setCheckedDodItems({});
+        setIsDodOpen(true);
+      }
     } else {
       updateTaskStatus(taskId, newStatus);
     }
@@ -275,7 +333,7 @@ export default function KanbanBoard() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    addTask({ ...newTask, status: targetStatus, project_id: activeProjectId });
+    addTask({ ...newTask, status: targetStatus, project_id: activeProjectId, in_sprint_backlog: true });
     setIsModalOpen(false);
     setNewTask({ title: '', estimated_hours: 0, actual_hours: 0, assigned_to: '', story_points: 1, due_date: '', story_id: '' });
   };
@@ -290,27 +348,43 @@ export default function KanbanBoard() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100 transition-all duration-300">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">Sprint Backlog</h2>
-          <p className="text-slate-500 text-sm font-medium mt-1">Execução e Plano de Trabalho • Arraste para mover</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-xs font-medium text-slate-600 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-full">
-            <span className="w-2 h-2 rounded-full bg-[var(--primary-blue)] animate-pulse"></span>
-            Fluxo Contínuo Ativo
+      <div className="flex flex-col gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 transition-all duration-300">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800">Sprint Backlog</h2>
+            <p className="text-slate-500 text-sm font-medium mt-1">Execução e Plano de Trabalho • Arraste para mover</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-xs font-medium text-slate-600 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-full">
+              <span className="w-2 h-2 rounded-full bg-[var(--primary-blue)] animate-pulse"></span>
+              Fluxo Contínuo Ativo
+            </div>
           </div>
         </div>
+
+        {activeSprint?.goal && (
+          <div className="mt-2 bg-brand-primary/5 border border-brand-primary/20 rounded-xl p-4 flex items-start gap-4 shadow-sm">
+            <div className="text-2xl pt-1">🎯</div>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black text-brand-primary uppercase tracking-[0.2em] mb-1">
+                A Grande Meta da Sprint (North Star)
+              </span>
+              <p className="text-lg font-bold text-slate-800 leading-snug">
+                {activeSprint.goal}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="flex gap-8 overflow-x-auto pb-8 snap-x">
+      <div className="flex gap-4 overflow-x-auto pb-8 snap-x">
         {columns.map((col) => (
           <div key={col.status} className="snap-center">
             <KanbanColumn 
               title={col.title} 
               status={col.status} 
               tasks={filteredTasks.filter(t => t.status === col.status)} 
-              stories={userStories}
+              stories={sortedStories}
               onAddTask={handleOpenModal}
               onEditTask={handleEditTask}
               onDropTask={handleDropTask}
@@ -320,6 +394,7 @@ export default function KanbanBoard() {
                 const reason = prompt('Qual o motivo do impedimento? (Opcional)');
                 toggleTaskBlock(id, reason);
               }}
+              isReadOnly={isProjectPaused}
             />
           </div>
         ))}
@@ -358,6 +433,7 @@ export default function KanbanBoard() {
           <div className="flex flex-col gap-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">O que deve ser feito?</label>
             <input 
+              type="text" 
               required
               className="input-field dark:bg-slate-900 dark:border-slate-800" 
               placeholder="Ex: Refatorar componente de busca" 
@@ -434,82 +510,185 @@ export default function KanbanBoard() {
               );
             })()}
 
-            <div className="flex flex-col gap-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Título</label>
-              <input 
-                required
-                className="input-field dark:bg-slate-900 dark:border-slate-800 dark:text-white" 
-                value={editingTask.title}
-                onChange={(e) => setEditingTask({...editingTask, title: e.target.value})}
-              />
-            </div>
+            <fieldset disabled={isProjectPaused || editingTask?.is_paused} className="flex flex-col gap-6 w-full p-0 m-0 border-0 disabled:opacity-60">
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Título da Tarefa</label>
+                <input 
+                  type="text" 
+                  required 
+                  className="input-field dark:bg-slate-900 dark:border-slate-800 dark:text-white disabled:opacity-60" 
+                  value={editingTask.title}
+                  onChange={(e) => setEditingTask({...editingTask, title: e.target.value})}
+                />
+              </div>
 
-            <div className="grid grid-cols-2 gap-5">
-              <div className="flex flex-col gap-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Data de Entrega</label>
-                <input type="date" className="input-field dark:bg-slate-900 dark:border-slate-800 dark:text-white" value={editingTask.due_date || ''} onChange={e => setEditingTask({...editingTask, due_date: e.target.value})} />
+              <div className="grid grid-cols-2 gap-5">
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Data de Entrega</label>
+                  <input type="date" className="input-field dark:bg-slate-900 dark:border-slate-800 dark:text-white disabled:opacity-60" value={editingTask.due_date || ''} onChange={e => setEditingTask({...editingTask, due_date: e.target.value})} />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Estimativa (Horas)</label>
+                  <input type="number" className="input-field dark:bg-slate-900 dark:border-slate-800 dark:text-white disabled:opacity-60" value={editingTask.estimated_hours} onChange={e => setEditingTask({...editingTask, estimated_hours: parseInt(e.target.value) || 0})} />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Restante (Horas)</label>
+                  <input type="number" className="input-field dark:bg-slate-900 dark:border-slate-800 dark:text-white disabled:opacity-60" value={editingTask.remaining_hours !== undefined ? editingTask.remaining_hours : editingTask.estimated_hours} onChange={e => setEditingTask({...editingTask, remaining_hours: parseInt(e.target.value) || 0})} />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Realizado (Horas)</label>
+                  <input type="number" className="input-field dark:bg-slate-900 dark:border-slate-800 dark:text-white disabled:opacity-60" value={editingTask.actual_hours || 0} onChange={e => setEditingTask({...editingTask, actual_hours: parseInt(e.target.value) || 0})} />
+                </div>
               </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Estimativa (Horas)</label>
-                <input type="number" className="input-field dark:bg-slate-900 dark:border-slate-800 dark:text-white" value={editingTask.estimated_hours} onChange={e => setEditingTask({...editingTask, estimated_hours: parseInt(e.target.value) || 0})} />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Restante (Horas)</label>
-                <input type="number" className="input-field dark:bg-slate-900 dark:border-slate-800 dark:text-white" value={editingTask.remaining_hours !== undefined ? editingTask.remaining_hours : editingTask.estimated_hours} onChange={e => setEditingTask({...editingTask, remaining_hours: parseInt(e.target.value) || 0})} />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Realizado (Horas)</label>
-                <input type="number" className="input-field dark:bg-slate-900 dark:border-slate-800 dark:text-white" value={editingTask.actual_hours || 0} onChange={e => setEditingTask({...editingTask, actual_hours: parseInt(e.target.value) || 0})} />
-              </div>
-            </div>
 
-            <div className="flex flex-col gap-4">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Complexidade (Fibonacci)</label>
-              <div className="flex flex-wrap gap-2">
-                {[1, 2, 3, 5, 8, 13, 21].map(point => (
-                  <button
-                    key={point}
-                    type="button"
-                    onClick={() => setEditingTask({...editingTask, story_points: point})}
-                    className={`w-11 h-11 rounded-2xl font-black text-xs transition-all border-2 ${
-                      editingTask.story_points === point 
-                        ? 'bg-brand-primary border-brand-primary text-white shadow-lg shadow-brand-primary/25 scale-110' 
-                        : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-400 hover:border-brand-primary/50'
-                    }`}
-                  >
-                    {point}
-                  </button>
-                ))}
+              <div className="flex flex-col gap-4">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Complexidade (Fibonacci)</label>
+                <div className="flex flex-wrap gap-2">
+                  {[1, 2, 3, 5, 8, 13, 21].map(point => (
+                    <button
+                      key={point}
+                      type="button"
+                      onClick={() => setEditingTask({...editingTask, story_points: point})}
+                      className={`w-11 h-11 rounded-2xl font-black text-xs transition-all border-2 disabled:opacity-60 ${
+                        editingTask.story_points === point 
+                          ? 'bg-brand-primary border-brand-primary text-white shadow-lg shadow-brand-primary/25 scale-110' 
+                          : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-400 hover:border-brand-primary/50'
+                      }`}
+                    >
+                      {point}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            <div className="flex flex-col gap-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Responsável</label>
-              <select 
-                required
-                className="input-field dark:bg-slate-900 dark:border-slate-800 dark:text-white"
-                value={editingTask.assigned_to}
-                onChange={(e) => setEditingTask({...editingTask, assigned_to: e.target.value})}
-              >
-                <option value="">Selecione...</option>
-                {confirmed_users.map(user => (
-                  <option key={user.id} value={user.name}>{user.name}</option>
-                ))}
-              </select>
-            </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Responsável</label>
+                <select 
+                  required
+                  className="input-field dark:bg-slate-900 dark:border-slate-800 dark:text-white disabled:opacity-60"
+                  value={editingTask.assigned_to}
+                  onChange={(e) => setEditingTask({...editingTask, assigned_to: e.target.value})}
+                >
+                  <option value="">Selecione...</option>
+                  {confirmed_users.map(user => (
+                    <option key={user.id} value={user.name}>{user.name}</option>
+                  ))}
+                </select>
+              </div>
+            </fieldset>
+            
+            {editingTask?.is_paused && (
+              <div className="p-4 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-500 rounded-xl border border-amber-200/50 mb-4 text-xs font-semibold">
+                <span className="font-extrabold uppercase text-[9px] tracking-wide block mb-1">Motivo da Pausa:</span>
+                "{editingTask.paused_reason || 'Sem motivo informado'}"
+              </div>
+            )}
             
             <div className="flex gap-4 mt-4">
-              <button type="submit" className="flex-1 btn-primary bg-slate-900 dark:bg-white dark:text-slate-900 border-none">Salvar Alterações</button>
+              {isProjectPaused ? (
+                <div className="flex-1 p-3.5 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-500 rounded-xl text-center font-bold text-xs uppercase tracking-wider border border-amber-200">
+                  🔒 Projeto Pausado (Somente Leitura)
+                </div>
+              ) : editingTask?.is_paused ? (
+                <>
+                  {canPause && (
+                    <button 
+                      type="button"
+                      onClick={async () => {
+                        await updateTask(editingTask.id, { ...editingTask, is_paused: false, paused_reason: '' });
+                        setIsEditModalOpen(false);
+                      }}
+                      className="flex-1 px-4 py-2.5 rounded-xl bg-brand-success hover:bg-brand-success/95 text-white font-black text-xs uppercase tracking-widest transition-all shadow-md shadow-brand-success/15 border-none cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <Play size={12} fill="currentColor" /> Retomar Tarefa
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <button type="submit" className="flex-1 btn-primary bg-slate-900 dark:bg-white dark:text-slate-900 border-none">Salvar Alterações</button>
+                  {canPause && (
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        setIsEditModalOpen(false);
+                        setIsPauseModalOpen(true);
+                      }}
+                      className="px-4 py-2 rounded-[0.625rem] bg-amber-500 hover:bg-amber-600 text-white font-semibold text-xs uppercase tracking-wider transition-all border-none cursor-pointer"
+                    >
+                      Pausar Tarefa
+                    </button>
+                  )}
+                </>
+              )}
               <button 
                 type="button" 
                 onClick={() => setIsEditModalOpen(false)}
                 className="px-4 py-2 rounded-[0.625rem] bg-slate-100 dark:bg-slate-800 text-slate-500 font-semibold text-xs uppercase tracking-wider"
               >
-                Descartar
+                {isProjectPaused || editingTask?.is_paused ? 'Fechar' : 'Descartar'}
               </button>
             </div>
           </form>
         )}
+      </Modal>
+
+      {/* Modal Justificativa de Pausa de Projeto */}
+      <Modal 
+        isOpen={isPauseModalOpen} 
+        onClose={() => {
+          setIsPauseModalOpen(false);
+          setPauseJustification('');
+        }} 
+        title="Pausar Tarefa Técnica"
+      >
+        <div className="flex flex-col gap-6">
+          <div className="p-5 bg-amber-50 dark:bg-amber-900/10 rounded-2xl border-2 border-amber-100 dark:border-amber-900/30">
+            <p className="text-[11px] font-bold text-amber-800 dark:text-amber-500 leading-relaxed italic">
+              Ao pausar a tarefa, ela ficará em modo somente leitura e não poderá ser movimentada no quadro até que seja retomada. Outras tarefas continuarão seguindo o fluxo normal.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Justificativa da Pausa (Obrigatório)</label>
+            <textarea 
+              required
+              className="input-field dark:bg-slate-900 dark:border-slate-800 min-h-[120px] resize-none dark:text-white"
+              placeholder="Ex: Impedimento externo, aguardando aprovação técnica, priorização de outra tarefa urgente..."
+              value={pauseJustification}
+              onChange={(e) => setPauseJustification(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-4">
+            <button 
+              onClick={async () => {
+                if (!pauseJustification.trim()) {
+                  alert('Por favor, insira uma justificativa para pausar a tarefa.');
+                  return;
+                }
+                await updateTask(editingTask.id, {
+                  ...editingTask,
+                  is_paused: true,
+                  paused_reason: pauseJustification
+                });
+                setIsPauseModalOpen(false);
+                setPauseJustification('');
+              }}
+              className="flex-1 btn-primary bg-amber-500 hover:bg-amber-600 border-none text-white text-xs font-bold uppercase tracking-wider py-3.5 rounded-xl shadow-md cursor-pointer hover:scale-[1.02] active:scale-95"
+            >
+              Confirmar e Pausar
+            </button>
+            <button 
+              onClick={() => {
+                setIsPauseModalOpen(false);
+                setPauseJustification('');
+                setIsEditModalOpen(true);
+              }}
+              className="px-5 py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 font-semibold text-xs uppercase tracking-wider cursor-pointer"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
       </Modal>
 
       {/* Modal Retorno ao Backlog */}
@@ -548,34 +727,70 @@ export default function KanbanBoard() {
         onClose={() => setIsDodOpen(false)} 
         title="Checklist: Definição de Pronto"
       >
-        <div className="flex flex-col gap-8">
-          <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-100 dark:border-slate-800">
-             <p className="text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2">Item sendo finalizado:</p>
-             <p className="text-lg font-black text-slate-900 dark:text-white tracking-tight uppercase">"{selectedTask?.title}"</p>
-          </div>
-          
-          <div className="flex flex-col gap-3">
-            {[
-              'Revisão de código concluída',
-              'Critérios de Aceite atendidos',
-              'Sem bugs críticos conhecidos',
-              'Documentação atualizada'
-            ].map((item, i) => (
-              <label key={i} className="flex items-center gap-4 p-4 bg-white dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800 cursor-pointer hover:bg-slate-50 transition-colors group">
-                <div className="w-6 h-6 rounded-lg border-2 border-brand-success flex items-center justify-center bg-brand-success/5 group-hover:scale-110 transition-transform">
-                  <Check size={16} className="text-brand-success" />
-                </div>
-                <span className="text-xs text-slate-700 dark:text-slate-300 font-bold uppercase tracking-tight">{item}</span>
-              </label>
-            ))}
-          </div>
-          <button 
-            onClick={confirmDoD}
-            className="btn-primary w-full bg-brand-success shadow-lg shadow-brand-success/20 border-none"
-          >
-            Validar e Finalizar
-          </button>
-        </div>
+        {(() => {
+          const activeDodItems = dod_items || [
+            'Revisão de código concluída',
+            'Critérios de Aceite atendidos',
+            'Sem bugs críticos conhecidos',
+            'Documentação atualizada'
+          ];
+          const allDodChecked = activeDodItems.length === 0 || activeDodItems.every((_, i) => checkedDodItems[i]);
+
+          return (
+            <div className="flex flex-col gap-8">
+              <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-100 dark:border-slate-800">
+                 <p className="text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2">Item sendo finalizado:</p>
+                 <p className="text-lg font-black text-slate-900 dark:text-white tracking-tight uppercase">"{selectedTask?.title}"</p>
+              </div>
+              
+              <div className="flex flex-col gap-3">
+                {activeDodItems.map((item, i) => {
+                  const isChecked = !!checkedDodItems[i];
+                  return (
+                    <div 
+                      key={i} 
+                      onClick={() => setCheckedDodItems(prev => ({ ...prev, [i]: !prev[i] }))}
+                      className={`flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all duration-300 group
+                        ${isChecked 
+                          ? 'bg-brand-success/[0.03] border-brand-success/30 dark:bg-brand-success/[0.02] dark:border-brand-success/20 shadow-sm' 
+                          : 'bg-white dark:bg-slate-950 border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-900/30'
+                        }`}
+                    >
+                      <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300 group-hover:scale-110
+                        ${isChecked 
+                          ? 'border-brand-success bg-brand-success text-white shadow-md shadow-brand-success/25' 
+                          : 'border-slate-300 dark:border-slate-700 bg-transparent text-transparent'
+                        }`}
+                      >
+                        <Check size={14} strokeWidth={3} className={isChecked ? 'opacity-100 scale-100 transition-transform' : 'opacity-0 scale-75'} />
+                      </div>
+                      <span className={`text-xs font-bold uppercase tracking-tight transition-all duration-300 select-none
+                        ${isChecked 
+                          ? 'text-brand-success dark:text-brand-success/90 line-through decoration-brand-success/30' 
+                          : 'text-slate-700 dark:text-slate-300'
+                        }`}
+                      >
+                        {item}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              <button 
+                onClick={confirmDoD}
+                disabled={!allDodChecked}
+                className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all border-none
+                  ${allDodChecked 
+                    ? 'bg-brand-success text-white shadow-lg shadow-brand-success/20 hover:shadow-xl hover:scale-[1.02] active:scale-95 cursor-pointer' 
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
+                  }`}
+              >
+                Validar e Finalizar
+              </button>
+            </div>
+          );
+        })()}
       </Modal>
 
       {/* Modal de Alerta Premium */}

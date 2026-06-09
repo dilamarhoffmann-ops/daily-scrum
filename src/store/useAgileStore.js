@@ -34,6 +34,13 @@ const useAgileStore = create(
       confirmed_users: [...INITIAL_USERS],
       pending_users: [],
       loading: false,
+      dod_items: [
+        'Revisão de código concluída',
+        'Critérios de Aceite atendidos',
+        'Sem bugs críticos conhecidos',
+        'Documentação atualizada'
+      ],
+      updateDefinitionOfDone: (items) => set({ dod_items: items }),
 
       initializeAuth: async () => {
         if (!supabase) return;
@@ -123,7 +130,9 @@ const useAgileStore = create(
           }
 
           set((state) => ({
-            projects: projects || state.projects,
+            projects: projects 
+              ? [...projects].sort((a, b) => (a.priority_order || 0) - (b.priority_order || 0)) 
+              : state.projects,
             epics: epics || state.epics,
             userStories: stories || state.userStories,
             tasks: tasks || state.tasks,
@@ -148,17 +157,31 @@ const useAgileStore = create(
 
       addProject: async (project) => {
         const newId = `proj-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const nextOrder = get().projects.length;
         const newProject = { 
           id: newId, 
           name: project.name, 
           methodology: project.methodology || 'Scrum',
           status: 'active', 
+          priority_order: nextOrder,
           created_at: new Date().toISOString() 
         };
         
         if (supabase) {
-          const { error } = await supabase.from('projects').insert(newProject);
-          if (error) console.error('Error adding project to Supabase:', error);
+          let { error } = await supabase.from('projects').insert(newProject);
+          
+          if (error && (error.code === '42703' || error.message?.toLowerCase().includes('column'))) {
+            console.warn('⚠️ A coluna priority_order pode não existir na tabela projects. Tentando inserir sem ela...');
+            const { priority_order, ...safeProject } = newProject;
+            const retry = await supabase.from('projects').insert(safeProject);
+            error = retry.error;
+          }
+
+          if (error) {
+            console.error('Error adding project to Supabase:', error);
+            alert(`Falha ao salvar Produto/Projeto no Supabase: ${error.message}\nVerifique se o script RLS (fix_rls_all_tables.sql) foi executado.`);
+            return; // Bloqueia adição local para evitar erros de chaves estrangeiras posteriores!
+          }
         }
 
         set((state) => ({
@@ -209,6 +232,119 @@ const useAgileStore = create(
           return {
             projects: updatedProjects,
             activeProjectId: state.activeProjectId === projectId ? (nextActiveProject?.id || null) : state.activeProjectId
+          };
+        });
+      },
+
+      unarchiveProject: async (projectId) => {
+        if (supabase) {
+          const { error } = await supabase
+            .from('projects')
+            .update({ status: 'active' })
+            .eq('id', projectId);
+          
+          if (error) {
+            console.error('Error unarchiving project in Supabase:', error);
+            return;
+          }
+        }
+
+        set((state) => {
+          const updatedProjects = state.projects.map(p => p.id === projectId ? { ...p, status: 'active', paused_reason: null } : p);
+          return {
+            projects: updatedProjects,
+            activeProjectId: projectId
+          };
+        });
+      },
+
+      pauseProject: async (projectId, reason) => {
+        if (supabase) {
+          const { error } = await supabase
+            .from('projects')
+            .update({ status: 'paused', paused_reason: reason })
+            .eq('id', projectId);
+          
+          if (error) {
+            console.error('Error pausing project in Supabase:', error);
+            alert(`Erro ao pausar projeto no Supabase: ${error.message}`);
+            return;
+          }
+        }
+
+        set((state) => {
+          const updatedProjects = state.projects.map(p => 
+            p.id === projectId ? { ...p, status: 'paused', paused_reason: reason } : p
+          );
+          return {
+            projects: updatedProjects
+          };
+        });
+      },
+
+      resumeProject: async (projectId) => {
+        if (supabase) {
+          const { error } = await supabase
+            .from('projects')
+            .update({ status: 'active', paused_reason: null })
+            .eq('id', projectId);
+          
+          if (error) {
+            console.error('Error resuming project in Supabase:', error);
+            alert(`Erro ao retomar projeto no Supabase: ${error.message}`);
+            return;
+          }
+        }
+
+        set((state) => {
+          const updatedProjects = state.projects.map(p => 
+            p.id === projectId ? { ...p, status: 'active', paused_reason: null } : p
+          );
+          return {
+            projects: updatedProjects
+          };
+        });
+      },
+
+      reorderProjects: async (projectId, direction) => {
+        const state = get();
+        
+        let activeProjects = [...state.projects]
+          .filter(p => p.status === 'active')
+          .sort((a, b) => {
+            if ((a.priority_order || 0) !== (b.priority_order || 0)) {
+              return (a.priority_order || 0) - (b.priority_order || 0);
+            }
+            return a.id.localeCompare(b.id);
+          });
+
+        activeProjects = activeProjects.map((proj, i) => ({ ...proj, priority_order: i }));
+          
+        const index = activeProjects.findIndex(p => p.id === projectId);
+        if (index === -1) return;
+        if (direction === 'up' && index === 0) return;
+        if (direction === 'down' && index === activeProjects.length - 1) return;
+
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        
+        const temp = activeProjects[index];
+        activeProjects[index] = activeProjects[newIndex];
+        activeProjects[newIndex] = temp;
+
+        const updatedProjects = activeProjects.map((proj, i) => ({ ...proj, priority_order: i }));
+
+        if (supabase) {
+          const updates = updatedProjects.map(proj => 
+            supabase.from('projects').update({ priority_order: proj.priority_order }).eq('id', proj.id)
+          );
+          await Promise.all(updates);
+        }
+
+        set((state) => {
+          const archivedOnes = state.projects.filter(p => p.status !== 'active');
+          const merged = [...archivedOnes, ...updatedProjects];
+          return { 
+            projects: merged.sort((a, b) => (a.priority_order || 0) - (b.priority_order || 0)) 
           };
         });
       },
@@ -269,12 +405,21 @@ const useAgileStore = create(
           assignee_id: assignedUser?.id || null,
           is_blocked: !!task.is_blocked,
           block_reason: task.block_reason || '',
+          in_sprint_backlog: !!task.in_sprint_backlog,
           priority_order: get().tasks.filter(t => t.project_id === get().activeProjectId).length,
           created_at: new Date().toISOString() 
         };
 
         if (supabase) {
-          const { error } = await supabase.from('tasks').insert(newTask);
+          let { error } = await supabase.from('tasks').insert(newTask);
+          
+          if (error && (error.code === '42703' || error.message?.toLowerCase().includes('column'))) {
+            console.warn('⚠️ Algumas colunas (in_sprint_backlog, burn_history, remaining_hours) podem não existir no Supabase. Tentando inserir apenas com colunas padrão...');
+            const { in_sprint_backlog, burn_history, remaining_hours, started_at, completed_at, ...safeNewTask } = newTask;
+            const retry = await supabase.from('tasks').insert(safeNewTask);
+            error = retry.error;
+          }
+
           if (error) {
             console.error('❌ Erro ao criar Tarefa no Supabase:', error);
             alert(`Falha ao salvar tarefa no banco de dados: ${error.message}\nVerifique se o Épico/História foi criado corretamente.`);
@@ -388,10 +533,19 @@ const useAgileStore = create(
           const storyId = targetTask.story_id;
           const storyTasks = updatedTasks.filter(t => t.story_id === storyId);
           const allDone = storyTasks.length > 0 && storyTasks.every(t => t.status === 'done');
+          const anyStarted = storyTasks.some(t => t.status !== 'todo' && t.status !== 'backlog');
 
           const updatedStories = state.userStories.map(s => {
             if (s.id === storyId) {
-              const newStatus = allDone ? 'done' : (s.status === 'done' ? 'in_progress' : s.status);
+              let newStatus = s.status;
+              
+              if (allDone) {
+                newStatus = 'done';
+              } else if (anyStarted) {
+                newStatus = 'in_progress';
+              } else if (s.status !== 'backlog') {
+                newStatus = 'todo';
+              }
               
               if (newStatus !== s.status && supabase) {
                 // Sincroniza história no Supabase de forma assíncrona, mas com log de erro
@@ -526,18 +680,65 @@ const useAgileStore = create(
           assigned_to: updates.assigned_to || null,
           assignee_id: assignedUser?.id || null,
           is_blocked: !!updates.is_blocked,
-          block_reason: updates.block_reason || ''
+          block_reason: updates.block_reason || '',
+          is_paused: updates.is_paused !== undefined ? !!updates.is_paused : (existingTask?.is_paused ?? false),
+          paused_reason: updates.paused_reason !== undefined ? updates.paused_reason : (existingTask?.paused_reason || ''),
+          in_sprint_backlog: updates.in_sprint_backlog !== undefined ? !!updates.in_sprint_backlog : (existingTask?.in_sprint_backlog ?? false)
         };
 
         if (supabase) {
-          const { error } = await supabase.from('tasks').update(cleanUpdates).eq('id', taskId);
+          let { error } = await supabase.from('tasks').update(cleanUpdates).eq('id', taskId);
+          
+          if (error && (error.code === '42703' || error.message?.toLowerCase().includes('column'))) {
+            console.warn('⚠️ Algumas colunas (in_sprint_backlog, burn_history, remaining_hours, is_paused, paused_reason) podem não existir no Supabase. Tentando atualizar apenas com colunas padrão...');
+            const { in_sprint_backlog, burn_history, remaining_hours, started_at, completed_at, is_paused, paused_reason, ...safeUpdates } = cleanUpdates;
+            const retry = await supabase.from('tasks').update(safeUpdates).eq('id', taskId);
+            error = retry.error;
+          }
+
           if (error) console.error('❌ Erro ao atualizar Tarefa no Supabase:', error);
           else console.log('✅ Tarefa atualizada com sucesso!');
         }
 
-        set((state) => ({
-          tasks: state.tasks.map(t => t.id === taskId ? { ...t, ...cleanUpdates } : t)
-        }));
+        set((state) => {
+          const updatedTasks = state.tasks.map(t => t.id === taskId ? { ...t, ...cleanUpdates } : t);
+          
+          let updatedStories = state.userStories;
+          if (existingTask?.story_id) {
+            const storyId = existingTask.story_id;
+            const storyTasks = updatedTasks.filter(t => t.story_id === storyId);
+            const allDone = storyTasks.length > 0 && storyTasks.every(t => t.status === 'done');
+            const anyStarted = storyTasks.some(t => t.status !== 'todo' && t.status !== 'backlog');
+
+            updatedStories = state.userStories.map(s => {
+              if (s.id === storyId) {
+                let newStatus = s.status;
+                if (allDone) {
+                  newStatus = 'done';
+                } else if (anyStarted) {
+                  newStatus = 'in_progress';
+                } else if (s.status !== 'backlog') {
+                  newStatus = 'todo';
+                }
+                
+                if (newStatus !== s.status && supabase) {
+                  supabase.from('user_stories').update({ status: newStatus }).eq('id', storyId)
+                    .then(({ error }) => {
+                      if (error) console.error(`❌ Erro ao sincronizar História ${storyId}:`, error);
+                      else console.log(`✅ História ${storyId} atualizada para ${newStatus}`);
+                    });
+                }
+                return { ...s, status: newStatus };
+              }
+              return s;
+            });
+          }
+
+          return {
+            tasks: updatedTasks,
+            userStories: updatedStories
+          };
+        });
       },
 
       addRetroItem: async (item) => {
@@ -741,6 +942,61 @@ const useAgileStore = create(
         }));
       },
 
+      launchProjectForStory: async (storyId, selectedTaskIds) => {
+        const state = get();
+        const activeSprint = state.sprints.find(s => s.status === 'active' && s.project_id === state.activeProjectId);
+        if (!activeSprint) {
+          alert('Não há nenhuma Sprint ativa para este projeto. Crie ou ative uma Sprint no Product Backlog primeiro.');
+          return;
+        }
+
+        // 1. Assign the Story to the active Sprint and set its status to 'todo'
+        const storyUpdates = { sprint_id: activeSprint.id, status: 'todo' };
+        if (supabase) {
+          const { error } = await supabase.from('user_stories').update(storyUpdates).eq('id', storyId);
+          if (error) console.error('Error assigning story to sprint in Supabase:', error);
+        }
+
+        // 2. Update all selected tasks of this story to have in_sprint_backlog = true
+        // and ensure their status is 'todo'
+        const updatedTasks = state.tasks.map(t => {
+          if (t.story_id === storyId) {
+            const isSelected = selectedTaskIds.includes(t.id);
+            if (isSelected) {
+              return { ...t, in_sprint_backlog: true, status: 'todo' };
+            }
+          }
+          return t;
+        });
+
+        // Sync selected tasks in Supabase
+        if (supabase) {
+          const tasksToUpdate = updatedTasks.filter(t => t.story_id === storyId && selectedTaskIds.includes(t.id));
+          for (const task of tasksToUpdate) {
+            const cleanTaskUpdates = {
+              in_sprint_backlog: true,
+              status: 'todo'
+            };
+            let { error } = await supabase.from('tasks').update(cleanTaskUpdates).eq('id', task.id);
+            
+            if (error && (error.code === '42703' || error.message?.includes('column'))) {
+              console.warn('⚠️ A coluna in_sprint_backlog não existe no Supabase. Atualizando sem ela...');
+              const safeTaskUpdates = { status: 'todo' };
+              const retry = await supabase.from('tasks').update(safeTaskUpdates).eq('id', task.id);
+              error = retry.error;
+            }
+            if (error) console.error(`Error updating task ${task.id} in Supabase:`, error);
+          }
+        }
+
+        set((state) => ({
+          userStories: state.userStories.map(s => s.id === storyId ? { ...s, ...storyUpdates } : s),
+          tasks: updatedTasks
+        }));
+        
+        console.log(`🚀 Projeto lançado para a História ${storyId}! ${selectedTaskIds.length} tarefa(s) enviada(s) para o Sprint Backlog.`);
+      },
+
       returnStoryToBacklog: async (storyId, justification) => {
         const updates = { sprint_id: null, status: 'backlog', backlog_justification: justification };
         if (supabase) {
@@ -759,7 +1015,12 @@ const useAgileStore = create(
         const state = get();
         const projectStories = state.userStories
           .filter(s => s.project_id === state.activeProjectId)
-          .sort((a, b) => (a.priority_order || 0) - (b.priority_order || 0));
+          .sort((a, b) => {
+            if ((a.priority_order || 0) !== (b.priority_order || 0)) {
+              return (a.priority_order || 0) - (b.priority_order || 0);
+            }
+            return a.id.localeCompare(b.id);
+          });
         
         const index = projectStories.findIndex(s => s.id === storyId);
         if (index === -1) return;

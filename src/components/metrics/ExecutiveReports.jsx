@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import { 
   FileText, Download, Users, Clock, Crosshair, 
-  TrendingUp, Activity, Briefcase, ChevronRight 
+  Activity, Briefcase, ChevronRight 
 } from 'lucide-react';
 import useAgileStore from '../../store/useAgileStore';
 import ScrumCard from '../common/ScrumCard';
@@ -81,10 +81,6 @@ export default function ExecutiveReports() {
             className="flex items-center gap-2 px-6 py-3 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-lg"
           >
             <Download size={14} /> Exportar PDF
-          </button>
-
-          <button className="flex items-center gap-2 px-6 py-3 bg-brand-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-brand-primary/20">
-            <TrendingUp size={14} /> Insights IA
           </button>
         </div>
       </div>
